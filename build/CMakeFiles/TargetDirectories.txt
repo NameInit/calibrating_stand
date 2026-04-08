@@ -1,0 +1,6 @@
+/home/ilya/Desktop/calibrating_stand/build/CMakeFiles/stream_depth.dir
+/home/ilya/Desktop/calibrating_stand/build/CMakeFiles/generator_oak.dir
+/home/ilya/Desktop/calibrating_stand/build/CMakeFiles/generator_x4l.dir
+/home/ilya/Desktop/calibrating_stand/build/CMakeFiles/calibrate.dir
+/home/ilya/Desktop/calibrating_stand/build/CMakeFiles/edit_cache.dir
+/home/ilya/Desktop/calibrating_stand/build/CMakeFiles/rebuild_cache.dir
