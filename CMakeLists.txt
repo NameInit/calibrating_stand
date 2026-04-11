@@ -4,7 +4,7 @@ project(OakStereoProject)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(depthai_DIR "/home/ilya/Desktop/depthai-core/build")
+set(depthai_DIR "/home/ilya/Desktop/depthai-core/build") #тут потом менять придётся
 
 find_package(depthai CONFIG REQUIRED)
 find_package(OpenCV REQUIRED)
