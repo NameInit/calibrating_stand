@@ -7,19 +7,17 @@
 #include <stdio.h>
 #include <iostream>
 
-using namespace std;
-using namespace cv;
 
 class CalibratingStereo{
 	public:
 		CalibratingStereo(const char* leftcalib_file, const char* rightcalib_file) 
-		: fsl_(leftcalib_file, FileStorage::READ), fsr_(rightcalib_file, FileStorage::READ){
+		: fsl_(leftcalib_file, cv::FileStorage::READ), fsr_(rightcalib_file, cv::FileStorage::READ){
 			if (!fsl_.isOpened()) {
-				cerr << "Error: Cannot open left calibration file: " << leftcalib_file << endl;
+				std::cerr << "Error: Cannot open left calibration file: " << leftcalib_file << std::endl;
 				exit(1);
 			}
 			if (!fsr_.isOpened()) {
-				cerr << "Error: Cannot open right calibration file: " << rightcalib_file << endl;
+				std::cerr << "Error: Cannot open right calibration file: " << rightcalib_file << std::endl;
 				exit(1);
 			}
 			
@@ -32,11 +30,11 @@ class CalibratingStereo{
 			fsl_["square_size"] >> square_size_;
 			
 			if (K1_.empty() || K2_.empty() || D1_.empty() || D2_.empty()) {
-				cerr << "Error: Failed to load camera matrices or distortion coefficients" << endl;
+				std::cerr << "Error: Failed to load camera matrices or distortion coefficients" << std::endl;
 				exit(1);
 			}
 			if (board_width_ <= 0 || board_height_ <= 0 || square_size_ <= 0) {
-				cerr << "Error: Invalid board dimensions or square size" << endl;
+				std::cerr << "Error: Invalid board dimensions or square size" << std::endl;
 				exit(1);
 			}
 		}
@@ -45,11 +43,11 @@ class CalibratingStereo{
 
 		void LoadImagePoints(int num_imgs,const char* leftimg_dir,const char* rightimg_dir,const char* leftimg_filename,const char* rightimg_filename,const char* extension) {
 			if (num_imgs <= 0) {
-				cerr << "Error: Number of images must be positive" << endl;
+				std::cerr << "Error: Number of images must be positive" << std::endl;
 				return;
 			}
 
-			Size board_size = Size(board_width_, board_height_);
+			cv::Size board_size = cv::Size(board_width_, board_height_);
 			int board_n = board_width_ * board_height_;
 
 			for (int i = 1; i <= num_imgs; i++) {
@@ -57,63 +55,63 @@ class CalibratingStereo{
 				sprintf(left_img, "%s%s%d.%s", leftimg_dir, leftimg_filename, i, extension);
 				sprintf(right_img, "%s%s%d.%s", rightimg_dir, rightimg_filename, i, extension);
 				
-				img1_ = imread(left_img, IMREAD_COLOR);
-				img2_ = imread(right_img, IMREAD_COLOR);
+				img1_ = cv::imread(left_img, cv::IMREAD_COLOR);
+				img2_ = cv::imread(right_img, cv::IMREAD_COLOR);
 				
 				if (img1_.empty()) {
-					cerr << "Warning: Cannot read left image: " << left_img << endl;
+					std::cerr << "Warning: Cannot read left image: " << left_img << std::endl;
 					continue;
 				}
 				if (img2_.empty()) {
-					cerr << "Warning: Cannot read right image: " << right_img << endl;
+					std::cerr << "Warning: Cannot read right image: " << right_img << std::endl;
 					continue;
 				}
 				
 				if (img1_.size() != img2_.size()) {
-					cerr << "Warning: Image size mismatch for pair " << i << endl;
+					std::cerr << "Warning: Image size mismatch for pair " << i << std::endl;
 					continue;
 				}
 				
-				cvtColor(img1_, gray1_, COLOR_BGR2GRAY);
-				cvtColor(img2_, gray2_, COLOR_BGR2GRAY);
+				cv::cvtColor(img1_, gray1_, cv::COLOR_BGR2GRAY);
+				cv::cvtColor(img2_, gray2_, cv::COLOR_BGR2GRAY);
 
 				bool found1 = false, found2 = false;
 
 				found1 = cv::findChessboardCorners(img1_, board_size, corners1_,
-			CALIB_CB_ADAPTIVE_THRESH | CALIB_CB_FILTER_QUADS);
+			cv::CALIB_CB_ADAPTIVE_THRESH | cv::CALIB_CB_FILTER_QUADS);
 				found2 = cv::findChessboardCorners(img2_, board_size, corners2_,
-			CALIB_CB_ADAPTIVE_THRESH | CALIB_CB_FILTER_QUADS);
+			cv::CALIB_CB_ADAPTIVE_THRESH | cv::CALIB_CB_FILTER_QUADS);
 
 				if(!found1 || !found2){
-					cout << "Chessboard find error!" << endl;
-					cout << "leftImg: " << left_img << " and rightImg: " << right_img <<endl;
+					std::cout << "Chessboard find error!" << std::endl;
+					std::cout << "leftImg: " << left_img << " and rightImg: " << right_img <<std::endl;
 					continue;
 				} 
 
 				if (found1) {
 					cv::cornerSubPix(gray1_, corners1_, cv::Size(5, 5), cv::Size(-1, -1),
-						cv::TermCriteria(TermCriteria::EPS | TermCriteria::MAX_ITER, 30, 0.1));
+						cv::TermCriteria(cv::TermCriteria::EPS | cv::TermCriteria::MAX_ITER, 30, 0.1));
 					cv::drawChessboardCorners(gray1_, board_size, corners1_, found1);
 				}
 				
 				if (found2) {
 					cv::cornerSubPix(gray2_, corners2_, cv::Size(5, 5), cv::Size(-1, -1),
-						cv::TermCriteria(TermCriteria::EPS | TermCriteria::MAX_ITER, 30, 0.1));
+						cv::TermCriteria(cv::TermCriteria::EPS | cv::TermCriteria::MAX_ITER, 30, 0.1));
 					cv::drawChessboardCorners(gray2_, board_size, corners2_, found2);
 				}
 
 				if (corners1_.size() != corners2_.size()) {
-					cerr << "Warning: Different number of corners detected in pair " << i << endl;
+					std::cerr << "Warning: Different number of corners detected in pair " << i << std::endl;
 					continue;
 				}
 
-				vector< Point3f > obj;
+				std::vector< cv::Point3f > obj;
 				for (int i = 0; i < board_height_; i++)
 					for (int j = 0; j < board_width_; j++)
-						obj.push_back(Point3f((float)j * square_size_, (float)i * square_size_, 0));
+						obj.push_back(cv::Point3f((float)j * square_size_, (float)i * square_size_, 0));
 
 				if (found1 && found2) {
-					cout << i << ". Found corners!" << endl;
+					std::cout << i << ". Found corners!" << std::endl;
 					imagePoints1_.push_back(corners1_);
 					imagePoints2_.push_back(corners2_);
 					object_points_.push_back(obj);
@@ -121,15 +119,15 @@ class CalibratingStereo{
 			}
 			
 			if (imagePoints1_.empty()) {
-				cerr << "Error: No valid image pairs found" << endl;
+				std::cerr << "Error: No valid image pairs found" << std::endl;
 				return;
 			}
 			
 			for (int i = 0; i < imagePoints1_.size(); i++) {
-				vector< Point2f > v1, v2;
+				std::vector< cv::Point2f > v1, v2;
 				for (int j = 0; j < imagePoints1_[i].size(); j++) {
-					v1.push_back(Point2f((double)imagePoints1_[i][j].x, (double)imagePoints1_[i][j].y));
-					v2.push_back(Point2f((double)imagePoints2_[i][j].x, (double)imagePoints2_[i][j].y));
+					v1.push_back(cv::Point2f((double)imagePoints1_[i][j].x, (double)imagePoints1_[i][j].y));
+					v2.push_back(cv::Point2f((double)imagePoints2_[i][j].x, (double)imagePoints2_[i][j].y));
 				}
 				left_img_points_.push_back(v1);
 				right_img_points_.push_back(v2);
@@ -138,45 +136,45 @@ class CalibratingStereo{
 
 		void ComputeMatrixStereo(){
 			if (object_points_.empty() || left_img_points_.empty() || right_img_points_.empty()) {
-				cerr << "Error: No image points loaded. Call LoadImagePoints first." << endl;
+				std::cerr << "Error: No image points loaded. Call LoadImagePoints first." << std::endl;
 				return;
 			}
 			
 			if (img1_.empty()) {
-				cerr << "Error: No image size available for calibration" << endl;
+				std::cerr << "Error: No image size available for calibration" << std::endl;
 				return;
 			}
 			
 			double rms = stereoCalibrate(object_points_, left_img_points_, right_img_points_, 
 			                              K1_, D1_, K2_, D2_, img1_.size(), R_, T_, E_, F_,
-			                              CALIB_FIX_INTRINSIC,
-			                              TermCriteria(TermCriteria::EPS | TermCriteria::MAX_ITER, 100, 1e-5));
+			                              cv::CALIB_FIX_INTRINSIC,
+			                              cv::TermCriteria(cv::TermCriteria::EPS | cv::TermCriteria::MAX_ITER, 100, 1e-5));
 			
-			cout << "Stereo calibration RMS error: " << rms << endl;
+			std::cout << "Stereo calibration RMS error: " << rms << std::endl;
 			
 			if (rms > 1.0) {
-				cerr << "Warning: High calibration RMS error. Results may be inaccurate." << endl;
+				std::cerr << "Warning: High calibration RMS error. Results may be inaccurate." << std::endl;
 			}
 		}
 
 		void ComputeMatrixStereoRectify(){
 			if (R_.empty()) {
-				cerr << "Error: Stereo calibration not computed. Call ComputeMatrixStereo first." << endl;
+				std::cerr << "Error: Stereo calibration not computed. Call ComputeMatrixStereo first." << std::endl;
 				return;
 			}
 			
 			if (img1_.empty()) {
-				cerr << "Error: No image size available for rectification" << endl;
+				std::cerr << "Error: No image size available for rectification" << std::endl;
 				return;
 			}
 			
 			stereoRectify(K1_, D1_, K2_, D2_, img1_.size(), R_, T_, R1_, R2_, P1_, P2_, Q_);
 		}
 
-		void SaveMatrixTo(const string& filename_out = "result_stereo.yml"){
-			FileStorage fs1(filename_out, cv::FileStorage::WRITE);
+		void SaveMatrixTo(const std::string& filename_out = "result_stereo.yml"){
+			cv::FileStorage fs1(filename_out, cv::FileStorage::WRITE);
 			if (!fs1.isOpened()) {
-				cerr << "Error: Cannot open output file for writing: " << filename_out << endl;
+				std::cerr << "Error: Cannot open output file for writing: " << filename_out << std::endl;
 				return;
 			}
 			
@@ -194,23 +192,23 @@ class CalibratingStereo{
 			fs1 << "P2" << P2_;
 			fs1 << "Q" << Q_;
 			
-			cout << "Stereo calibration saved to: " << filename_out << endl;
+			std::cout << "Stereo calibration saved to: " << filename_out << std::endl;
 		}
 		
 	private:
-		vector<vector<Point3f>> object_points_;
-		vector<vector<Point2f>> imagePoints1_, imagePoints2_;
-		vector<Point2f> corners1_, corners2_;
-		vector<vector<Point2f>> left_img_points_, right_img_points_;
+		std::vector<std::vector<cv::Point3f>> object_points_;
+		std::vector<std::vector<cv::Point2f>> imagePoints1_, imagePoints2_;
+		std::vector<cv::Point2f> corners1_, corners2_;
+		std::vector<std::vector<cv::Point2f>> left_img_points_, right_img_points_;
 
-		Mat img1_, img2_, gray1_, gray2_;
+		cv::Mat img1_, img2_, gray1_, gray2_;
 
-		FileStorage fsl_, fsr_;
+		cv::FileStorage fsl_, fsr_;
 		
-		Mat K1_, K2_, R_, F_, E_;
-		Vec3d T_;
-		Mat D1_, D2_;
-		Mat R1_, R2_, P1_, P2_, Q_;
+		cv::Mat K1_, K2_, R_, F_, E_;
+		cv::Vec3d T_;
+		cv::Mat D1_, D2_;
+		cv::Mat R1_, R2_, P1_, P2_, Q_;
 
 		int board_width_, board_height_;
 		float square_size_;

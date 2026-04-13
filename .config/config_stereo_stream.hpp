@@ -13,7 +13,7 @@ namespace stereo_stream{
     bool use_wls_filter = true; 
     int wls_lambda = 80000;
     float wls_sigma = 1.5;
-    int sgbm_num_disp = 80;
+    int sgbm_num_disp = 112;
     int sgbm_block_size = 5;
     cv::Size img_size(img_width, img_height);
     int min_disp = 0;
