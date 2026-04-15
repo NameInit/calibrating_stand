@@ -6,24 +6,31 @@
 #include <chrono>
 #include <thread>
 #include <algorithm>
+#include <vector>
 
 #include "camera_oak_manager.hpp"
 #include "stereo_sgbm.hpp"
 #include "fps_counter.hpp"
+#include "velocity_tracker.hpp"
 
 class StereoPipeline {
 private:
     CameraOAKManager camera_;
     StereoSGBM stereoSGBM_;
     FPSCounter fps_counter_;
+    VelocityTracker velocity_tracker_;
 
+    //roi
     int cur_x_;
     int cur_y_;
     int win_width_;
     int win_height_;
 
+    //disparity
     double max_disparity_for_vis_;
-
+    
+    //image flow
+    cv::Mat prev_left_, prev_right_, cur_left_, cur_right_;
 public:
     StereoPipeline(const std::string& calib_file_path,
                    int min_disp, int num_disp, int block_size, int p1, int p2,
@@ -33,10 +40,11 @@ public:
                    double max_disparity_for_vis_val)
         : camera_(),
           stereoSGBM_(calib_file_path),
-          fps_counter_(),
+          fps_counter_(), velocity_tracker_(),
           cur_x_(initial_x), cur_y_(initial_y),
           win_width_(initial_width), win_height_(initial_height),
-          max_disparity_for_vis_(max_disparity_for_vis_val)
+          max_disparity_for_vis_(max_disparity_for_vis_val),
+          prev_left_(), prev_right_(), cur_left_(), cur_right_()
     {
         stereoSGBM_.Create(min_disp, num_disp, block_size, p1, p2,
                           uniqueness_ratio, speckle_ws, speckle_range,
@@ -103,19 +111,20 @@ private:
             cv::cvtColor(right_raw, right_raw, cv::COLOR_BGR2GRAY);
         }
 
-        cv::Mat left_rect, right_rect;
-        stereoSGBM_.Rectify(left_raw, right_raw, left_rect, right_rect);
+        stereoSGBM_.Rectify(left_raw, right_raw, cur_left_, cur_right_);
 
-        cv::cvtColor(left_rect, output_display_frame, cv::COLOR_GRAY2BGR);
+        cv::cvtColor(cur_left_, output_display_frame, cv::COLOR_GRAY2BGR);
 
         clampROI(output_display_frame.cols, output_display_frame.rows);
         cv::Rect roi(cur_x_ - win_width_/2, cur_y_ - win_height_/2, win_width_, win_height_);
 
-        cv::Mat left_roi = left_rect(roi);
-        cv::Mat right_roi = right_rect(roi);
+        cv::Mat left_roi = cur_left_(roi);
+        cv::Mat right_roi = cur_right_(roi);
 
-        cv::Mat disp_roi = stereoSGBM_.Compute(left_roi, right_roi);
+        cv::Mat disp_roi = stereoSGBM_.Compute(cur_left_, cur_right_);
+        disp_roi=disp_roi(roi);
 
+        //считаем карту глубины для roi
         if (!disp_roi.empty()) {
             cv::Mat disp_vis_roi;
 
@@ -126,13 +135,22 @@ private:
             disp_vis_roi.copyTo(output_display_frame(roi));
 
             cv::Mat depth_roi = stereoSGBM_.GetDepthMap(disp_roi);
+            
             float dist = depth_roi.at<float>(depth_roi.rows / 2, depth_roi.cols / 2);
-
             double fps = fps_counter_.get_fps();
+
             std::string label = cv::format("FPS: %.1lf | DIST: %.2f m", fps, dist);
             cv::putText(output_display_frame, label, cv::Point(roi.x, roi.y - 5),
                         cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(255, 255, 255), 2);
         }
+
+
+        //считаем скорость
+        if(!prev_left_.empty() && !prev_right_.empty()){
+            ;
+        }
+        prev_left_ = cur_left_.clone();
+        prev_right_ = cur_right_.clone();
 
         cv::rectangle(output_display_frame, roi, cv::Scalar(255, 255, 255), 1);
 
