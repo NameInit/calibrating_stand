@@ -9,11 +9,13 @@
 
 #include "camera_oak_manager.hpp"
 #include "stereo_sgbm.hpp"
+#include "fps_counter.hpp"
 
 class StereoPipeline {
 private:
     CameraOAKManager camera_;
     StereoSGBM stereoSGBM_;
+    FPSCounter fps_counter_;
 
     int cur_x_;
     int cur_y_;
@@ -31,6 +33,7 @@ public:
                    double max_disparity_for_vis_val)
         : camera_(),
           stereoSGBM_(calib_file_path),
+          fps_counter_(),
           cur_x_(initial_x), cur_y_(initial_y),
           win_width_(initial_width), win_height_(initial_height),
           max_disparity_for_vis_(max_disparity_for_vis_val)
@@ -83,6 +86,8 @@ private:
             return false;
         }
 
+        fps_counter_.update();
+
         cv::Mat left_raw = camera_.GetLeftFrame();
         cv::Mat right_raw = camera_.GetRightFrame();
 
@@ -123,7 +128,8 @@ private:
             cv::Mat depth_roi = stereoSGBM_.GetDepthMap(disp_roi);
             float dist = depth_roi.at<float>(depth_roi.rows / 2, depth_roi.cols / 2);
 
-            std::string label = cv::format("To center: %.2f m", dist);
+            double fps = fps_counter_.get_fps();
+            std::string label = cv::format("FPS: %.1lf | DIST: %.2f m", fps, dist);
             cv::putText(output_display_frame, label, cv::Point(roi.x, roi.y - 5),
                         cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(255, 255, 255), 2);
         }
