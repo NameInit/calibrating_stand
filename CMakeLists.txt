@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG -Wall")
 
-set(depthai_DIR "/home/ilya/Desktop/depthai-core/build") #тут потом менять придётся
+set(depthai_DIR "/home/ilya/Desktop/depthai-core/build") #https://github.com/luxonis/depthai-core/tree/v2.28.0
 
 find_package(depthai CONFIG REQUIRED)
 find_package(OpenCV REQUIRED)

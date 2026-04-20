@@ -36,6 +36,10 @@ public:
         fs.release();
     }
 
+    const cv::Mat& getK1() const { return K1_; }
+    const cv::Mat& getD1() const { return D1_; }
+    const cv::Mat& getQ()  const { return Q_; }
+
     void Create(int min_disp, int num_disp, int block_size, int p1, int p2, 
                 int uniqueness_ratio, int speckle_ws, int speckle_range,
                 bool use_wls, int wls_lambda, float wls_sigma, int median_blur_size) {
@@ -99,5 +103,9 @@ public:
         depth_map = channels[2];
         depth_map.setTo(0, disp_float <= 0);
         return depth_map;
+    }
+
+    cv::Mat GetMatrixLeft(){
+        return K1_;
     }
 };
