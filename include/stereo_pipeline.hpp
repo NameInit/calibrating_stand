@@ -12,12 +12,14 @@
 #include "camera_oak_manager.hpp"
 #include "stereo_sgbm.hpp"
 #include "fps_counter.hpp"
+#include "velocity_tracker.hpp"
 
 class StereoPipeline {
 private:
     CameraOAKManager camera_;
     StereoSGBM stereoSGBM_;
     FPSCounter fps_counter_;
+    VelocityTracker velocity_tracker_;
 
     // roi
     int cur_x_;
@@ -46,6 +48,7 @@ public:
         : camera_(),
           stereoSGBM_(calib_file_path),
           fps_counter_(),
+          velocity_tracker_(),
           cur_x_(initial_x), cur_y_(initial_y),
           win_width_(initial_width), win_height_(initial_height),
           max_disparity_for_vis_(max_disparity_for_vis_val),
@@ -55,7 +58,9 @@ public:
         stereoSGBM_.Create(min_disp, num_disp, block_size, p1, p2,
                           uniqueness_ratio, speckle_ws, speckle_range,
                           use_wls, wls_lambda, wls_sigma, median_blur_size);
-        
+
+        velocity_tracker_.Init(stereoSGBM_.GetMatrixLeft());
+        velocity_tracker_.Start(); //старт таймера внутри для подсчёта dt
         prev_time_ = std::chrono::steady_clock::now();
     }
 
@@ -137,27 +142,8 @@ private:
         
         cur_depth_map = stereoSGBM_.GetDepthMap(disp_map);
 
-        double cur_vel_kmh = 0.0;
-
-        // скорость за dt
-        if(!disp_roi.empty() && !prev_depth_map.empty() && !prev_left_.empty()) {
-            auto cur_time = std::chrono::steady_clock::now();
-            std::chrono::duration<double> diff = cur_time - prev_time_;
-            double dt = diff.count();
-
-            if (dt > 0.005) { // check zero
-                double vel_ms = CalcVelocity(prev_left_, cur_left_, prev_depth_map, dt);
-                
-                // фильтр скольжения
-                const double alpha = 0.2; // 0.0 - сильное сглаживание, 1.0 - без сглаживания
-                smoothed_velocity_ = alpha * vel_ms + (1.0 - alpha) * smoothed_velocity_;
-                
-                cur_vel_kmh = smoothed_velocity_ * 3.6; // м/с -> км/ч
-            }
-            prev_time_ = cur_time;
-        } else {
-            prev_time_ = std::chrono::steady_clock::now();
-        }
+        velocity_tracker_.CalcVelocity(prev_left_, cur_left_, prev_depth_map);
+        double cur_vel_kmh = velocity_tracker_.GetSmoothed();
 
         // Отрисовка ROI и информации
         if (!disp_roi.empty()) {
@@ -213,7 +199,7 @@ private:
 
         std::vector<cv::Point2f> pts_prev, pts_curr, pts_prev_back;
         
-        // маска на будущее, если нужно выкинуть жасть потока изображений
+        // маска на будущее, если нужно выкинуть часть потока изображений
         cv::Mat mask; 
         cv::goodFeaturesToTrack(prev_img, pts_prev, 400, 0.01, 10, mask);
         if (pts_prev.empty()) return 0.0;
