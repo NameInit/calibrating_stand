@@ -25,7 +25,6 @@ int main() {
         stereo_stream::wls_lambda,
         stereo_stream::wls_sigma,
         stereo_stream::median_blur_size,
-        300, 300, 250, 250,
         stereo_stream::sgbm_num_disp
     );
 
