@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.13)
-project(OakStereoProject)
+project(StereoProject)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -18,6 +18,7 @@ set(COMMON_LIBS
     ${OpenCV_LIBS}
 )
 
+#чтобы не попасть на snap
 set(COMMON_LINK_OPTIONS
     -Wl,--push-state,--no-as-needed
     /usr/lib/x86_64-linux-gnu/libpthread.so.0
@@ -28,12 +29,18 @@ add_executable(stream_depth src/stream_depth.cpp)
 add_executable(generator_oak src/generator_oak.cpp)
 add_executable(generator_x4l src/generator_x4l.cpp)
 add_executable(calibrate src/calibrate.cpp)
+add_executable(test_life_stereo_x4l2 "test/test_life_stereo_x4l2.cpp")
+add_executable(generator_stereo_x4l2 "src/generator_stereo_x4l2.cpp")
 
 target_link_libraries(stream_depth PRIVATE ${COMMON_LIBS})
 target_link_libraries(generator_oak PRIVATE ${COMMON_LIBS})
 target_link_libraries(generator_x4l PRIVATE ${COMMON_LIBS})
 target_link_libraries(calibrate PRIVATE ${OpenCV_LIBS})
+target_link_libraries(test_life_stereo_x4l2 PRIVATE ${OpenCV_LIBS})
+target_link_libraries(generator_stereo_x4l2 PRIVATE ${OpenCV_LIBS})
 
 target_link_options(stream_depth PRIVATE ${COMMON_LINK_OPTIONS})
 target_link_options(generator_oak PRIVATE ${COMMON_LINK_OPTIONS})
 target_link_options(generator_x4l PRIVATE ${COMMON_LINK_OPTIONS})
+target_link_options(test_life_stereo_x4l2 PRIVATE ${COMMON_LINK_OPTIONS})
+target_link_options(generator_stereo_x4l2 PRIVATE ${COMMON_LINK_OPTIONS})

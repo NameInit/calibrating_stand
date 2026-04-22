@@ -10,6 +10,7 @@
 #include <cmath>
 
 #include "camera_oak_manager.hpp"
+#include "camera_st_manager.hpp"
 #include "stereo_sgbm.hpp"
 #include "fps_counter.hpp"
 #include "velocity_tracker.hpp"
@@ -17,7 +18,7 @@
 
 class StereoPipeline {
 private:
-    CameraOAKManager camera_;
+    CameraSTManager camera_;
     StereoSGBM stereoSGBM_;
     FPSCounter fps_counter_;
     VelocityTracker velocity_tracker_;
@@ -36,7 +37,7 @@ public:
                    int uniqueness_ratio, int speckle_ws, int speckle_range,
                    bool use_wls, int wls_lambda, float wls_sigma, int median_blur_size,
                    double max_disparity_for_vis_val)
-        : camera_(),
+        : camera_(2,{1280, 800},cv::CAP_V4L2,true),
           stereoSGBM_(calib_file_path),
           fps_counter_(),
           velocity_tracker_(),
@@ -62,6 +63,9 @@ public:
             cv::Mat display_frame;
             if (processFrame(display_frame)) {
                 cv::imshow("Left Rectified", display_frame);
+            }
+            else{
+                std::cerr << "Error process frame" << std::endl;
             }
 
             int key = cv::waitKey(1);
@@ -89,7 +93,10 @@ private:
         if(left_raw.channels() == 3) cv::cvtColor(left_raw, left_raw, cv::COLOR_BGR2GRAY);
         if(right_raw.channels() == 3) cv::cvtColor(right_raw, right_raw, cv::COLOR_BGR2GRAY);
 
-        stereoSGBM_.Rectify(left_raw, right_raw, cur_left_, cur_right_);
+        cur_left_ = left_raw;
+        cur_right_ = right_raw;
+
+        stereoSGBM_.Rectify(cur_left_, cur_right_, cur_left_, cur_right_);
         cv::cvtColor(cur_left_, output_display_frame, cv::COLOR_GRAY2BGR);
 
         if(!roi_manager_.CheckInitConstraint()){

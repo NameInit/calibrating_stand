@@ -5,19 +5,19 @@
 #include <vector>
 
 struct VelocityTrackerParams {
-        int max_corners = 400;
-        double quality_level = 0.01;
-        double min_distance = 10.0;
-        int min_pnp_points = 12;
-        int min_inliers = 15;
-        double inlier_ratio_threshold = 0.2;
-        double ransac_reproj_error = 3.0;
-        int ransac_iter = 200;
-        double ransac_conf = 0.99;
-        float min_depth = 0.5f;
-        float max_depth = 20.0f;
-        double smoothed_alpha = 0.8;
-    };
+    int max_corners = 400;
+    double quality_level = 0.01;
+    double min_distance = 10.0;
+    int min_pnp_points = 12;
+    int min_inliers = 15;
+    double inlier_ratio_threshold = 0.2;
+    double ransac_reproj_error = 3.0;
+    int ransac_iter = 200;
+    double ransac_conf = 0.99;
+    float min_depth = 0.5f;
+    float max_depth = 20.0f;
+    double smoothed_alpha = 0.8;
+};
 
 class VelocityTracker {
 private:
