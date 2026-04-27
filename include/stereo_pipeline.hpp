@@ -15,6 +15,7 @@
 #include "fps_counter.hpp"
 #include "velocity_tracker.hpp"
 #include "roi_manager.hpp"
+#include "vizualizer.hpp"
 
 class StereoPipeline {
 private:
@@ -23,27 +24,25 @@ private:
     FPSCounter fps_counter_;
     VelocityTracker velocity_tracker_;
     ROIManager roi_manager_;
-
-    // disparity
-    double max_disparity_for_vis_;
+    Vizualizer vizualizer_;
     
     // image flow
     cv::Mat prev_left_, prev_right_, cur_left_, cur_right_;
-    cv::Mat prev_depth_map, cur_depth_map;
+    cv::Mat prev_depth_map_, cur_depth_map_;
+
+    cv::Mat cur_disp_map_;
 
 public:
     StereoPipeline(const std::string& calib_file_path,
                    int min_disp, int num_disp, int block_size, int p1, int p2,
                    int uniqueness_ratio, int speckle_ws, int speckle_range,
-                   bool use_wls, int wls_lambda, float wls_sigma, int median_blur_size,
-                   double max_disparity_for_vis_val)
+                   bool use_wls, int wls_lambda, float wls_sigma, int median_blur_size) 
         : camera_(2,{1280, 800},cv::CAP_V4L2,true),
           stereoSGBM_(calib_file_path),
           fps_counter_(),
           velocity_tracker_(),
           roi_manager_(),
-          max_disparity_for_vis_(max_disparity_for_vis_val),
-          prev_left_(), prev_right_(), cur_left_(), cur_right_()
+          vizualizer_("Left",num_disp)
     {
         stereoSGBM_.Create(min_disp, num_disp, block_size, p1, p2,
                           uniqueness_ratio, speckle_ws, speckle_range,
@@ -62,19 +61,18 @@ public:
         while (true) {
             cv::Mat display_frame;
             if (processFrame(display_frame)) {
-                cv::imshow("Left Rectified", display_frame);
+                vizualizer_.show();
             }
-            else{
+            else {
                 std::cerr << "Error process frame" << std::endl;
             }
-
+            
             int key = cv::waitKey(1);
             if (handleKey(key)) {
                 break;
             }
         }
 
-        cv::destroyAllWindows();
         return 0;
     }
 
@@ -88,53 +86,46 @@ private:
         cv::Mat left_raw = camera_.GetLeftFrame();
         cv::Mat right_raw = camera_.GetRightFrame();
 
-        if (left_raw.empty() || right_raw.empty()) return false;
+        if(left_raw.empty() || right_raw.empty()) {
+            std::cerr << "Empty frame" << std::endl;
+            return false;
+        }
 
-        if(left_raw.channels() == 3) cv::cvtColor(left_raw, left_raw, cv::COLOR_BGR2GRAY);
-        if(right_raw.channels() == 3) cv::cvtColor(right_raw, right_raw, cv::COLOR_BGR2GRAY);
+        if(left_raw.channels()>1 || right_raw.channels()>1){
+            std::cerr << "Error len channels in frame";
+            return false;
+        }
 
         cur_left_ = left_raw;
         cur_right_ = right_raw;
 
         stereoSGBM_.Rectify(cur_left_, cur_right_, cur_left_, cur_right_);
-        cv::cvtColor(cur_left_, output_display_frame, cv::COLOR_GRAY2BGR);
+        cv::cvtColor(cur_left_, output_display_frame, cv::COLOR_GRAY2RGB);
 
         if(!roi_manager_.CheckInitConstraint()){
             roi_manager_.SetConstraint({0,0}, {output_display_frame.cols, output_display_frame.rows});
         }
 
+        double fps=fps_counter_.get_fps();
+
         cv::Rect roi = roi_manager_.GetRect();
 
-        cv::Mat disp_map = stereoSGBM_.Compute(cur_left_, cur_right_);
-        cv::Mat disp_roi = disp_map(roi);
+        cur_disp_map_ = stereoSGBM_.Compute(cur_left_, cur_right_);
+        cv::Mat disp_roi = cur_disp_map_(roi);
         
-        cur_depth_map = stereoSGBM_.GetDepthMap(disp_map);
+        cur_depth_map_ = stereoSGBM_.GetDepthMap(cur_disp_map_);
+        cv::Mat depth_roi = cur_depth_map_(roi);
+        float dist = depth_roi.at<float>(depth_roi.rows / 2, depth_roi.cols / 2);
 
-        velocity_tracker_.CalcVelocity(prev_left_, cur_left_, prev_depth_map);
+        velocity_tracker_.CalcVelocity(prev_left_, cur_left_, prev_depth_map_);
         double cur_vel_kmh = velocity_tracker_.GetSmoothed();
 
-        // Отрисовка ROI и информации
-        cv::Mat disp_vis_roi;
-        double alpha = 255.0 / max_disparity_for_vis_;
-        disp_roi.convertTo(disp_vis_roi, CV_8U, alpha);
-        cv::applyColorMap(disp_vis_roi, disp_vis_roi, cv::COLORMAP_JET);
-        disp_vis_roi.copyTo(output_display_frame(roi));
-
-        cv::Mat depth_roi = stereoSGBM_.GetDepthMap(disp_roi);
-        float dist = depth_roi.at<float>(depth_roi.rows / 2, depth_roi.cols / 2);
+        vizualizer_.render(cur_left_, cur_disp_map_, roi, fps, dist, cur_vel_kmh);
         
-        // вывод
-        std::string label = cv::format("FPS: %.1lf | DIST: %.2f m | VEL: %.1f km/h", 
-                                        fps_counter_.get_fps(), dist, cur_vel_kmh);
-        cv::putText(output_display_frame, label, cv::Point(10, 30),
-                    cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 0, 255), 3);
 
         prev_left_ = cur_left_.clone();
         prev_right_ = cur_right_.clone();
-        prev_depth_map = cur_depth_map.clone();
-
-        cv::rectangle(output_display_frame, roi, cv::Scalar(255, 255, 255), 1);
-
+        prev_depth_map_ = cur_depth_map_.clone();
         return true;
     }
 

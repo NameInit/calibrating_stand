@@ -2,9 +2,9 @@
 #include "../.config/config.hpp"
 
 
-//TO DO: подумать над конфигами
-//TO DO: сделать конструктор со структурой
-//TO DO: поиграться с параметрами
+//TO DO: сделать YAML конфиги
+//TO DO: сделать конструктор со структурой для всех классов
+//TO DO: гиперпараметры
 //TO DO: посмтреть сборку OpenCV с TBB, IPP, CUDA/cuDNN (если есть GPU)
 
 // ORB-SLAM2 / ORB-SLAM3: Очень популярные, работают со стереокамерами. Дают точную оценку позы и строят карту. Сложно интегрировать, но дают выдающиеся результаты.
@@ -24,8 +24,7 @@ int main() {
         stereo_stream::use_wls_filter,
         stereo_stream::wls_lambda,
         stereo_stream::wls_sigma,
-        stereo_stream::median_blur_size,
-        stereo_stream::sgbm_num_disp
+        stereo_stream::median_blur_size
     );
 
     return pipeline.run();
