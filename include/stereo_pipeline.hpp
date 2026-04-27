@@ -9,7 +9,6 @@
 #include <vector>
 #include <cmath>
 
-#include "camera_oak_manager.hpp"
 #include "camera_st_manager.hpp"
 #include "stereo_sgbm.hpp"
 #include "fps_counter.hpp"
@@ -59,8 +58,7 @@ public:
         }
 
         while (true) {
-            cv::Mat display_frame;
-            if (processFrame(display_frame)) {
+            if (processFrame()) {
                 vizualizer_.show();
             }
             else {
@@ -77,7 +75,7 @@ public:
     }
 
 private:
-    bool processFrame(cv::Mat& output_display_frame) {
+    bool processFrame() {
         if (!camera_.IsOpened()) return false;
         if (!camera_.Read()) return false;
 
@@ -100,23 +98,29 @@ private:
         cur_right_ = right_raw;
 
         stereoSGBM_.Rectify(cur_left_, cur_right_, cur_left_, cur_right_);
-        cv::cvtColor(cur_left_, output_display_frame, cv::COLOR_GRAY2RGB);
 
         if(!roi_manager_.CheckInitConstraint()){
-            roi_manager_.SetConstraint({0,0}, {output_display_frame.cols, output_display_frame.rows});
+            roi_manager_.SetConstraint({0,0}, {cur_left_.cols, cur_left_.rows});
         }
 
+        //fps
         double fps=fps_counter_.get_fps();
 
+        //roi
         cv::Rect roi = roi_manager_.GetRect();
 
+        //disparity
         cur_disp_map_ = stereoSGBM_.Compute(cur_left_, cur_right_);
         cv::Mat disp_roi = cur_disp_map_(roi);
         
+        //distance
         cur_depth_map_ = stereoSGBM_.GetDepthMap(cur_disp_map_);
+        
+        //roi
         cv::Mat depth_roi = cur_depth_map_(roi);
         float dist = depth_roi.at<float>(depth_roi.rows / 2, depth_roi.cols / 2);
 
+        //velocity
         velocity_tracker_.CalcVelocity(prev_left_, cur_left_, prev_depth_map_);
         double cur_vel_kmh = velocity_tracker_.GetSmoothed();
 
