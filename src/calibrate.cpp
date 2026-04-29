@@ -7,7 +7,7 @@
 int main(){
     std::cout << "---------START CALIBRATE LEFT CAM---------" << std::endl;
     DatasetParams p_left;
-    p_left.imgs_filename="left";
+    p_left.imgs_filename=calibrating_cams::img_left_filename;
     CalibratingCam calibrating_left_cam;
     calibrating_left_cam.SetupCalibration(p_left);
     calibrating_left_cam.ComputeMatrixCalibration();
@@ -17,7 +17,7 @@ int main(){
 
     std::cout << "---------START CALIBRATE RIGHT CAM---------" << std::endl;
     DatasetParams p_right;
-    p_left.imgs_filename="right";
+    p_left.imgs_filename=calibrating_cams::img_right_filename;
     CalibratingCam calibrating_right_cam;
     calibrating_right_cam.SetupCalibration(p_right);
     calibrating_right_cam.ComputeMatrixCalibration();

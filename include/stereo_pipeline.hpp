@@ -28,19 +28,30 @@ private:
     ROIManager roi_manager_;
     Vizualizer vizualizer_;
     
-    // image flow
+    //image flow
     cv::Mat prev_left_, prev_right_, cur_left_, cur_right_, visual_;
     cv::Mat prev_depth_map_, cur_depth_map_;
 
     cv::Mat cur_disp_map_;
 
-    //thread
+    //metrics
+    double vel_kmh_;
+
+    //thread sgbm
     std::thread sgbm_thread_;
     std::atomic<bool> sgbm_is_runnig_;
     std::mutex sgbm_mutex_in_;
     std::mutex sgbm_mutex_out_;
-    cv::Mat shared_left_, shared_right_;
-    cv::Mat shared_disp_map_, shared_depth_map_;
+
+    //thread velocity
+    std::thread vel_thread_;
+    std::atomic<bool> vel_is_running_;
+    std::mutex vel_mutex_in_;
+
+    //shared fields
+    cv::Mat sgbm_shared_left_, sgbm_shared_right_;
+    cv::Mat sgbm_shared_disp_map_, sgbm_shared_depth_map_;
+    cv::Mat vel_shared_cur_left_, vel_shared_prev_left_, vel_shared_prev_depth_map_; 
 
 public:
     StereoPipeline(const std::string& calib_file_path,
@@ -66,6 +77,7 @@ public:
 
     ~StereoPipeline(){
         stopSGBMLoop_();
+        stopVelocityLoop_();
     }
 
     int run() {
@@ -76,6 +88,9 @@ public:
 
         sgbm_is_runnig_=true;
         sgbm_thread_ = std::thread(&StereoPipeline::runSGBMLoop_, this);
+
+        vel_is_running_=true;
+        vel_thread_ = std::thread(&StereoPipeline::runVelocityLoop_, this);
 
         while (true) {
             if (processFrame_()) {
@@ -118,31 +133,37 @@ private:
 
         stereoSGBM_.Rectify(cur_left_, cur_right_, cur_left_, cur_right_);
 
+        //send frames for calc stereo
         {
             std::lock_guard<std::mutex> lock(sgbm_mutex_in_);
-            shared_left_=cur_left_.clone();
-            shared_right_=cur_right_.clone();
+            sgbm_shared_left_=cur_left_.clone();
+            sgbm_shared_right_=cur_right_.clone();
         }
 
+        //get stereo maps
         {
             std::lock_guard<std::mutex> lock(sgbm_mutex_out_);
-            if(shared_depth_map_.empty()||shared_disp_map_.empty()){
+            if(sgbm_shared_depth_map_.empty()||sgbm_shared_disp_map_.empty()){
                 return true;
             }
-            cur_disp_map_=shared_disp_map_.clone();
-            cur_depth_map_=shared_depth_map_.clone();
+            cur_disp_map_=sgbm_shared_disp_map_.clone();
+            cur_depth_map_=sgbm_shared_depth_map_.clone();
         }
 
-        //roi
+        //roi and distance to center roi
         cv::Rect roi = roi_manager_.GetRect();
         cv::Mat depth_roi = cur_depth_map_(roi);
         float dist = depth_roi.at<float>(depth_roi.rows / 2, depth_roi.cols / 2);
 
-        //velocity
-        velocity_tracker_.CalcVelocity(prev_left_, cur_left_, prev_depth_map_);
-        double cur_vel_kmh = velocity_tracker_.GetSmoothed();
+        //send frames for calc velocity
+        {
+            std::lock_guard<std::mutex> lock(vel_mutex_in_);
+            vel_shared_prev_left_ = prev_left_.clone();
+            vel_shared_cur_left_ = cur_left_.clone();
+            vel_shared_prev_depth_map_ = prev_depth_map_.clone();
+        }
 
-        vizualizer_.render(visual_, cur_disp_map_, roi, fps, dist, cur_vel_kmh);
+        vizualizer_.render(visual_, cur_disp_map_, roi, fps, dist, vel_kmh_);
 
         prev_left_ = cur_left_.clone();
         prev_right_ = cur_right_.clone();
@@ -169,12 +190,12 @@ private:
             cv::Mat local_left, local_right;
             {
                 std::lock_guard<std::mutex> lock(sgbm_mutex_in_);
-                if(shared_left_.empty()||shared_right_.empty()){
+                if(sgbm_shared_left_.empty()||sgbm_shared_right_.empty()){
                     has_frames=false;
                 }
                 else{
-                    local_left=shared_left_.clone();
-                    local_right=shared_right_.clone();
+                    local_left=sgbm_shared_left_.clone();
+                    local_right=sgbm_shared_right_.clone();
                 }
             }
 
@@ -189,8 +210,8 @@ private:
 
             {
                 std::lock_guard<std::mutex> lock(sgbm_mutex_out_);
-                shared_disp_map_ = local_disp_map.clone();
-                shared_depth_map_ = local_depth_map.clone();
+                sgbm_shared_disp_map_ = local_disp_map.clone();
+                sgbm_shared_depth_map_ = local_depth_map.clone();
             }
         }
         return ;
@@ -200,6 +221,41 @@ private:
         sgbm_is_runnig_=false;
         if(sgbm_thread_.joinable()){
             sgbm_thread_.join();
+        }
+        return ;
+    }
+
+    void runVelocityLoop_(){
+        while(vel_is_running_){
+            bool has_frames = true;
+            cv::Mat local_prev_left, local_cur_left, local_prev_depth_map;
+            {
+                std::lock_guard<std::mutex> lock(vel_mutex_in_);
+                if(vel_shared_prev_left_.empty()||vel_shared_cur_left_.empty()||vel_shared_prev_depth_map_.empty()){
+                    has_frames=false;
+                }
+                else{
+                    local_prev_left = vel_shared_prev_left_;
+                    local_cur_left = vel_shared_cur_left_;
+                    local_prev_depth_map = vel_shared_prev_depth_map_;
+                }
+            }
+
+            if(!has_frames){
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                continue;
+            }
+
+            velocity_tracker_.CalcVelocity(local_prev_left, local_cur_left, local_prev_depth_map);
+            vel_kmh_ = velocity_tracker_.GetSmoothed();
+        }
+        return ;
+    }
+
+    void stopVelocityLoop_(){
+        vel_is_running_=false;
+        if(vel_thread_.joinable()){
+            vel_thread_.join();
         }
         return ;
     }
