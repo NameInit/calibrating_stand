@@ -4,20 +4,58 @@
 #include <opencv2/calib3d/calib3d.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <stdio.h>
+#include <filesystem>
+#include <cstring>
 #include <iostream>
+#include "../.config/config_calibrating_stereo.hpp"
 
+struct StereoFilesParams{
+	std::string leftcalib_file = calibrating_stereo::filename_left_cam_params;
+	std::string rightcalib_file = calibrating_stereo::filename_right_cam_params;
+};
+
+struct StereoDatasetParams{
+	std::string leftimg_dir = calibrating_stereo::path_imgs_directory;
+	std::string rightimg_dir = calibrating_stereo::path_imgs_directory;
+	std::string leftimg_filename = calibrating_stereo::img_left_filename;
+	std::string rightimg_filename = calibrating_stereo::img_right_filename;
+	std::string extension = calibrating_stereo::extension;
+};
 
 class CalibratingStereo{
+	private:
+		std::vector<std::vector<cv::Point3f>> object_points_;
+		std::vector<std::vector<cv::Point2f>> imagePoints1_, imagePoints2_;
+		std::vector<cv::Point2f> corners1_, corners2_;
+		std::vector<std::vector<cv::Point2f>> left_img_points_, right_img_points_;
+
+		cv::Mat img1_, img2_, gray1_, gray2_;
+
+		cv::FileStorage fsl_, fsr_;
+		
+		cv::Mat K1_, K2_, R_, F_, E_;
+		cv::Vec3d T_;
+		cv::Mat D1_, D2_;
+		cv::Mat R1_, R2_, P1_, P2_, Q_;
+
+		int board_width_, board_height_;
+		float square_size_;
+
+		bool DoesExist_(const std::string& name) {
+			if(!std::filesystem::exists(name) || !std::filesystem::is_regular_file(name)){
+				return false;
+			}
+			return true;
+		}
 	public:
-		CalibratingStereo(const char* leftcalib_file, const char* rightcalib_file) 
-		: fsl_(leftcalib_file, cv::FileStorage::READ), fsr_(rightcalib_file, cv::FileStorage::READ){
+		CalibratingStereo(const StereoFilesParams& p = StereoFilesParams()) 
+		: fsl_(p.leftcalib_file, cv::FileStorage::READ), fsr_(p.rightcalib_file, cv::FileStorage::READ){
 			if (!fsl_.isOpened()) {
-				std::cerr << "Error: Cannot open left calibration file: " << leftcalib_file << std::endl;
+				std::cerr << "Error: Cannot open left calibration file: " << p.leftcalib_file << std::endl;
 				exit(1);
 			}
 			if (!fsr_.isOpened()) {
-				std::cerr << "Error: Cannot open right calibration file: " << rightcalib_file << std::endl;
+				std::cerr << "Error: Cannot open right calibration file: " << p.rightcalib_file << std::endl;
 				exit(1);
 			}
 			
@@ -41,20 +79,19 @@ class CalibratingStereo{
 		
 		~CalibratingStereo(){}
 
-		void LoadImagePoints(int num_imgs,const char* leftimg_dir,const char* rightimg_dir,const char* leftimg_filename,const char* rightimg_filename,const char* extension) {
-			if (num_imgs <= 0) {
-				std::cerr << "Error: Number of images must be positive" << std::endl;
-				return;
-			}
-
+		void LoadImagePoints(const StereoDatasetParams& p = StereoDatasetParams()) {
 			cv::Size board_size = cv::Size(board_width_, board_height_);
 			int board_n = board_width_ * board_height_;
 
-			for (int i = 1; i <= num_imgs; i++) {
-				char left_img[256], right_img[256];
-				sprintf(left_img, "%s%s%d.%s", leftimg_dir, leftimg_filename, i, extension);
-				sprintf(right_img, "%s%s%d.%s", rightimg_dir, rightimg_filename, i, extension);
+			for (int i = 1; ; i++) {
+				std::string left_img, right_img;
+				left_img = p.leftimg_dir + p.leftimg_filename + std::to_string(i) + "." + p.extension;
+				right_img = p.rightimg_dir + p.rightimg_filename + std::to_string(i) + "." + p.extension;
 				
+				if(!DoesExist_(left_img)||!DoesExist_(right_img)){
+					break;
+				}
+
 				img1_ = cv::imread(left_img, cv::IMREAD_COLOR);
 				img2_ = cv::imread(right_img, cv::IMREAD_COLOR);
 				
@@ -194,22 +231,4 @@ class CalibratingStereo{
 			
 			std::cout << "Stereo calibration saved to: " << filename_out << std::endl;
 		}
-		
-	private:
-		std::vector<std::vector<cv::Point3f>> object_points_;
-		std::vector<std::vector<cv::Point2f>> imagePoints1_, imagePoints2_;
-		std::vector<cv::Point2f> corners1_, corners2_;
-		std::vector<std::vector<cv::Point2f>> left_img_points_, right_img_points_;
-
-		cv::Mat img1_, img2_, gray1_, gray2_;
-
-		cv::FileStorage fsl_, fsr_;
-		
-		cv::Mat K1_, K2_, R_, F_, E_;
-		cv::Vec3d T_;
-		cv::Mat D1_, D2_;
-		cv::Mat R1_, R2_, P1_, P2_, Q_;
-
-		int board_width_, board_height_;
-		float square_size_;
 };

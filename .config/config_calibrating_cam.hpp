@@ -9,7 +9,7 @@ namespace calibrating_cams{
     constexpr int board_width = chessboard::board_width;
     constexpr int board_height = chessboard::board_height;
     constexpr float square_size = chessboard::square_size;
-    constexpr int num_imgs = 71;
+    constexpr int num_imgs = 72;
 
     std::string path_imgs_directory = "../data/image/chessboard_10_7_paper_st_1280_800/";
     std::string img_left_filename = "left";

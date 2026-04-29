@@ -4,33 +4,61 @@
 #include <opencv2/calib3d/calib3d.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <stdio.h>
 #include <iostream>
-#include <sys/stat.h>
+#include <filesystem>
+#include <cstring>
+#include "../.config/config_chessboard.hpp"
+#include "../.config/config_calibrating_cam.hpp"
 
+struct BoardParams {
+    int board_width = chessboard::board_width;
+    int board_height = chessboard::board_height;
+    float square_size = chessboard::square_size;
+};
+
+struct DatasetParams{
+	std::string imgs_directory = calibrating_cams::path_imgs_directory;
+	std::string imgs_filename = calibrating_cams::img_left_filename;
+	std::string extension = calibrating_cams::extension;
+};
 
 class CalibratingCam{
+	private:
+		bool DoesExist_(const std::string& name) {
+			if(!std::filesystem::exists(name) || !std::filesystem::is_regular_file(name)){
+				return false;
+			}
+			return true;
+		}
+
+		std::vector<std::vector<cv::Point3f>> object_points_;
+		std::vector<std::vector<cv::Point2f>> image_points_;
+		std::vector<cv::Mat> rvecs_, tvecs_;
+		
+		cv::Mat K_, D_;
+		cv::Size img_size_;
+		
+		int board_width_, board_height_;
+		float square_size_;
+
 	public:
-		CalibratingCam(){}
+		CalibratingCam(const BoardParams& p = BoardParams()) 
+			: board_width_(p.board_width), 
+			  board_height_(p.board_height), 
+			  square_size_(p.square_size) {}
 		~CalibratingCam(){}
 
-		bool SetupCalibration(int board_width, int board_height, int num_imgs, 
-		                      float square_size,const char* imgs_directory, 
-		                      const char* imgs_filename, const char* extension) {
-			cv::Size board_size = cv::Size(board_width, board_height);
-			
-			board_width_ = board_width;
-			board_height_ = board_height;
-			square_size_ = square_size;
+		bool SetupCalibration(const DatasetParams& p = DatasetParams()) {
+			cv::Size board_size = cv::Size(board_width_, board_height_);
 
 			bool found_any = false;
 			cv::Size img_size;
-			for (int k = 1; k <= num_imgs; k++) {
-				char img_file[256];
-				sprintf(img_file, "%s%s%d.%s", imgs_directory, imgs_filename, k, extension);
+			for (int k = 1; ; k++) {
+				std::string img_file = p.imgs_directory + p.imgs_filename + std::to_string(k) + "." + p.extension;
 
-				if(!DoesExist_(img_file))
-					continue;
+				if(!DoesExist_(img_file)){
+					break;
+				}
 
 				cv::Mat img = cv::imread(img_file, cv::IMREAD_COLOR);
 				if(img.empty()) {
@@ -54,10 +82,10 @@ class CalibratingCam{
 					cv::drawChessboardCorners(gray, board_size, corners, found);
 					
 					std::vector<cv::Point3f> obj;
-					for (int i = 0; i < board_height; i++)
-						for (int j = 0; j < board_width; j++)
-							obj.push_back(cv::Point3f((float)j * square_size, 
-							                      (float)i * square_size, 0));
+					for (int i = 0; i < board_height_; i++)
+						for (int j = 0; j < board_width_; j++)
+							obj.push_back(cv::Point3f((float)j * square_size_, 
+							                      (float)i * square_size_, 0));
 
 					std::cout << k << ". Found corners!" << std::endl;
 					image_points_.push_back(corners);
@@ -135,20 +163,4 @@ class CalibratingCam{
 		cv::Mat getDistCoeffs() const { return D_; }
 		std::vector<cv::Mat> getRotationVectors() const { return rvecs_; }
 		std::vector<cv::Mat> getTranslationVectors() const { return tvecs_; }
-
-	private:
-		bool DoesExist_(const std::string& name) {
-			struct stat buffer;   
-			return (stat(name.c_str(), &buffer) == 0); 
-		}
-
-		std::vector<std::vector<cv::Point3f>> object_points_;
-		std::vector<std::vector<cv::Point2f>> image_points_;
-		std::vector<cv::Mat> rvecs_, tvecs_;
-		
-		cv::Mat K_, D_;
-		cv::Size img_size_;
-		
-		int board_width_, board_height_;
-		float square_size_;
 };
