@@ -64,6 +64,10 @@ class CameraSTManager{
             return combined;
         }
 
+        cv::Size getSizeImage(){
+            return size_im_;
+        }
+
         bool IsOpened() const {
             return cap_.isOpened();
         }

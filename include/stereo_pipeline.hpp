@@ -8,6 +8,9 @@
 #include <algorithm>
 #include <vector>
 #include <cmath>
+#include <mutex>
+#include <condition_variable>
+#include <atomic>
 
 #include "camera_st_manager.hpp"
 #include "stereo_sgbm.hpp"
@@ -26,10 +29,18 @@ private:
     Vizualizer vizualizer_;
     
     // image flow
-    cv::Mat prev_left_, prev_right_, cur_left_, cur_right_;
+    cv::Mat prev_left_, prev_right_, cur_left_, cur_right_, visual_;
     cv::Mat prev_depth_map_, cur_depth_map_;
 
     cv::Mat cur_disp_map_;
+
+    //thread
+    std::thread sgbm_thread_;
+    std::atomic<bool> sgbm_is_runnig_;
+    std::mutex sgbm_mutex_in_;
+    std::mutex sgbm_mutex_out_;
+    cv::Mat shared_left_, shared_right_;
+    cv::Mat shared_disp_map_, shared_depth_map_;
 
 public:
     StereoPipeline(const std::string& calib_file_path,
@@ -49,6 +60,12 @@ public:
 
         velocity_tracker_.Init(stereoSGBM_.GetMatrixLeft());
         velocity_tracker_.Start(); //старт таймера внутри для подсчёта dt
+
+        roi_manager_.SetConstraint({0,0}, camera_.getSizeImage());
+    }
+
+    ~StereoPipeline(){
+        stopSGBMLoop_();
     }
 
     int run() {
@@ -57,8 +74,11 @@ public:
             return 1;
         }
 
+        sgbm_is_runnig_=true;
+        sgbm_thread_ = std::thread(&StereoPipeline::runSGBMLoop_, this);
+
         while (true) {
-            if (processFrame()) {
+            if (processFrame_()) {
                 vizualizer_.show();
             }
             else {
@@ -66,7 +86,7 @@ public:
             }
             
             int key = cv::waitKey(1);
-            if (handleKey(key)) {
+            if (handleKey_(key)) {
                 break;
             }
         }
@@ -75,48 +95,46 @@ public:
     }
 
 private:
-    bool processFrame() {
+    bool processFrame_() {
         if (!camera_.IsOpened()) return false;
         if (!camera_.Read()) return false;
 
         fps_counter_.update();
+        double fps=fps_counter_.get_fps();
 
-        cv::Mat left_raw = camera_.GetLeftFrame();
-        cv::Mat right_raw = camera_.GetRightFrame();
+        visual_ = camera_.GetLeftFrame();
+        cur_left_ = camera_.GetLeftFrame();
+        cur_right_ = camera_.GetRightFrame();
 
-        if(left_raw.empty() || right_raw.empty()) {
+        if(cur_left_.empty() || cur_right_.empty()) {
             std::cerr << "Empty frame" << std::endl;
             return false;
         }
 
-        if(left_raw.channels()>1 || right_raw.channels()>1){
+        if(cur_left_.channels()>1 || cur_right_.channels()>1){
             std::cerr << "Error len channels in frame";
             return false;
         }
 
-        cur_left_ = left_raw;
-        cur_right_ = right_raw;
-
         stereoSGBM_.Rectify(cur_left_, cur_right_, cur_left_, cur_right_);
 
-        if(!roi_manager_.CheckInitConstraint()){
-            roi_manager_.SetConstraint({0,0}, {cur_left_.cols, cur_left_.rows});
+        {
+            std::lock_guard<std::mutex> lock(sgbm_mutex_in_);
+            shared_left_=cur_left_.clone();
+            shared_right_=cur_right_.clone();
         }
 
-        //fps
-        double fps=fps_counter_.get_fps();
+        {
+            std::lock_guard<std::mutex> lock(sgbm_mutex_out_);
+            if(shared_depth_map_.empty()||shared_disp_map_.empty()){
+                return true;
+            }
+            cur_disp_map_=shared_disp_map_.clone();
+            cur_depth_map_=shared_depth_map_.clone();
+        }
 
         //roi
         cv::Rect roi = roi_manager_.GetRect();
-
-        //disparity
-        cur_disp_map_ = stereoSGBM_.Compute(cur_left_, cur_right_);
-        cv::Mat disp_roi = cur_disp_map_(roi);
-        
-        //distance
-        cur_depth_map_ = stereoSGBM_.GetDepthMap(cur_disp_map_);
-        
-        //roi
         cv::Mat depth_roi = cur_depth_map_(roi);
         float dist = depth_roi.at<float>(depth_roi.rows / 2, depth_roi.cols / 2);
 
@@ -124,8 +142,7 @@ private:
         velocity_tracker_.CalcVelocity(prev_left_, cur_left_, prev_depth_map_);
         double cur_vel_kmh = velocity_tracker_.GetSmoothed();
 
-        vizualizer_.render(cur_left_, cur_disp_map_, roi, fps, dist, cur_vel_kmh);
-        
+        vizualizer_.render(visual_, cur_disp_map_, roi, fps, dist, cur_vel_kmh);
 
         prev_left_ = cur_left_.clone();
         prev_right_ = cur_right_.clone();
@@ -133,7 +150,7 @@ private:
         return true;
     }
 
-    bool handleKey(int key) {
+    bool handleKey_(int key) {
         if (key == 'a' || key == 'A') roi_manager_.moveROI(-30, 0);
         else if (key == 'd' || key == 'D') roi_manager_.moveROI(30, 0);
         else if (key == 'w' || key == 'W') roi_manager_.moveROI(0, -30);
@@ -144,5 +161,46 @@ private:
         else if (key == 'x' || key == 'X') roi_manager_.resizeROI(0, 30);
 
         return key == 'q' || key == 27; // 'q' or 'ESC'
+    }
+
+    void runSGBMLoop_(){
+        while(sgbm_is_runnig_){
+            bool has_frames = true;
+            cv::Mat local_left, local_right;
+            {
+                std::lock_guard<std::mutex> lock(sgbm_mutex_in_);
+                if(shared_left_.empty()||shared_right_.empty()){
+                    has_frames=false;
+                }
+                else{
+                    local_left=shared_left_.clone();
+                    local_right=shared_right_.clone();
+                }
+            }
+
+            if(!has_frames){
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                continue;
+            }
+
+            cv::Mat local_disp_map, local_depth_map;
+            local_disp_map = stereoSGBM_.Compute(local_left, local_right);
+            local_depth_map = stereoSGBM_.GetDepthMap(local_disp_map);
+
+            {
+                std::lock_guard<std::mutex> lock(sgbm_mutex_out_);
+                shared_disp_map_ = local_disp_map.clone();
+                shared_depth_map_ = local_depth_map.clone();
+            }
+        }
+        return ;
+    }
+
+    void stopSGBMLoop_(){
+        sgbm_is_runnig_=false;
+        if(sgbm_thread_.joinable()){
+            sgbm_thread_.join();
+        }
+        return ;
     }
 };

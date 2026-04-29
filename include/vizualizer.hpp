@@ -56,7 +56,9 @@ class Vizualizer{
         }
 
         Vizualizer& show(){
-            cv::imshow(win_name_, frame_vis_);
+            if(!frame_vis_.empty()){
+                cv::imshow(win_name_, frame_vis_);
+            }
             return *this;
         }
 };

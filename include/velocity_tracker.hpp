@@ -48,7 +48,7 @@ private:
     }
 
 public:
-    VelocityTracker() : fx_(0), fy_(0), cx_(0), cy_(0) {}
+    VelocityTracker() : fx_(0), fy_(0), cx_(0), cy_(0), smoothed_velocity_(0.), vel_ms_(0.) {}
 
     void Init(const cv::Mat& K, const VelocityTrackerParams& p = VelocityTrackerParams()) {
         K_ = K.clone();
@@ -61,7 +61,8 @@ public:
 
     double CalcVelocity(const cv::Mat& prev_img, const cv::Mat& cur_img, 
                         const cv::Mat& prev_depth,
-                        const cv::Mat& mask = cv::Mat()) 
+                        const cv::Mat& mask = cv::Mat(),
+                        bool to_kmh=true) 
     {
         cur_time_ = std::chrono::steady_clock::now();
         double dt = static_cast<std::chrono::duration<double>>(cur_time_ - prev_time_).count();
@@ -131,7 +132,7 @@ public:
 
         prev_time_=cur_time_;
 
-        return vel_ms_;
+        return to_kmh ? vel_ms_*3.6 : vel_ms_;
     }
 
     double GetSmoothed(bool to_kmh=true){
