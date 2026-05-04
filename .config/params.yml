@@ -1,0 +1,60 @@
+%YAML:1.0
+---
+path:
+  path_left_imgs_directory: "../data/image/chessboard_10_7_paper_st_1280_800/"
+  path_right_imgs_directory: "../data/image/chessboard_10_7_paper_st_1280_800/"
+  img_left_filename: "left"
+  img_right_filename: "right"
+  extension: "png"
+  filename_left_cam_params: "../result/cam_left.yml"
+  filename_right_cam_params: "../result/cam_right.yml"
+  filename_stereo_cam_params: "filename_stereo_cam_params"
+  path_out: "../result/"
+  num_test_img: 1
+
+camera:
+  video_id: 2
+  size_im: [1280, 800]
+  api_preference: 200 #cv::CAP_V4L2
+  use_mjpg: true
+
+roi:
+  x: 0
+  y: 0
+  width: 250
+  height: 250
+
+vizualizer:
+  win_name: "LeftFlow"
+  size_frame_vis: [1280,800]
+
+chessboard:
+  board_width: 9
+  board_height: 6
+  square_size: 0.02423
+
+stereo_sgbm:
+  min_disp: 0
+  num_disp: 144
+  block_size: 5
+  uniqueness_ratio: 10
+  speckle_ws: 100
+  speckle_range: 32
+  use_wls: true
+  wls_lambda: 80000
+  wls_sigma: 1.5
+  median_blur_size: 0
+
+velocity_tracker:
+  max_corners: 400
+  quality_level: 0.01
+  min_distance: 10.0
+  min_pnp_points: 12
+  min_inliers: 15
+  inlier_ratio_threshold: 0.2
+  ransac_reproj_error: 3.0
+  ransac_iter: 200
+  ransac_conf: 0.99
+  min_depth: 0.5
+  max_depth: 20.0
+  smoothed_alpha: 0.8

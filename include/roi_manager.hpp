@@ -4,6 +4,25 @@
 #include <iostream>
 #include <cmath>
 
+struct ROIManagerParams{
+    cv::Size min_size=cv::Size(); 
+    cv::Size max_size=cv::Size(); 
+    int x;
+    int y;
+    int width;
+    int height;
+
+    ROIManagerParams(const std::string& config_name = "../.config/params.yml"){
+        cv::FileStorage fs(config_name, cv::FileStorage::READ);
+        cv::FileNode node = fs["roi"];
+
+        node["x"] >> x;
+        node["y"] >> y;
+        node["width"] >> width;
+        node["height"] >> height;
+    }
+};
+
 class ROIManager{
     private:
         int x_, y_, width_, height_;
@@ -19,8 +38,8 @@ class ROIManager{
             return ;
         }
     public:
-        ROIManager(cv::Size min_size=cv::Size(), cv::Size max_size=cv::Size(), int x=0, int y=0, int width=250, int height=250) 
-                : min_size_(min_size), max_size_(max_size), x_(x), y_(y), width_(width), height_(height) {
+        ROIManager(const ROIManagerParams& p = ROIManagerParams()) 
+                : min_size_(p.min_size), max_size_(p.max_size), x_(p.x), y_(p.y), width_(p.width), height_(p.height) {
                     initialized_constraint_ = (max_size_.width!=0 && max_size_.height!=0);
                 }
         ~ROIManager(){}

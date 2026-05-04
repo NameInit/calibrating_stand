@@ -1,6 +1,5 @@
 #include <iostream>
 #include <opencv2/opencv.hpp>
-#include "../.config/config.hpp"
 
 int main(){
     std::string out_dir = "../data/image/chessboard_10_7_paper_st_1280_800/";

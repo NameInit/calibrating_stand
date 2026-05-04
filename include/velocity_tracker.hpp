@@ -5,18 +5,36 @@
 #include <vector>
 
 struct VelocityTrackerParams {
-    int max_corners = 400;
-    double quality_level = 0.01;
-    double min_distance = 10.0;
-    int min_pnp_points = 12;
-    int min_inliers = 15;
-    double inlier_ratio_threshold = 0.2;
-    double ransac_reproj_error = 3.0;
-    int ransac_iter = 200;
-    double ransac_conf = 0.99;
-    float min_depth = 0.5f;
-    float max_depth = 20.0f;
-    double smoothed_alpha = 0.8;
+    int max_corners;
+    double quality_level;
+    double min_distance;
+    int min_pnp_points;
+    int min_inliers;
+    double inlier_ratio_threshold;
+    double ransac_reproj_error;
+    int ransac_iter;
+    double ransac_conf;
+    float min_depth;
+    float max_depth;
+    double smoothed_alpha;
+
+    VelocityTrackerParams(const std::string& config_name = "../.config/params.yml"){
+        cv::FileStorage fs(config_name, cv::FileStorage::READ);
+        cv::FileNode node = fs["velocity_tracker"];
+
+        node["max_corners"] >> max_corners;
+        node["quality_level"] >> quality_level;
+        node["min_distance"] >> min_distance;
+        node["min_pnp_points"] >> min_pnp_points;
+        node["min_inliers"] >> min_inliers;
+        node["inlier_ratio_threshold"] >> inlier_ratio_threshold;
+        node["ransac_reproj_error"] >> ransac_reproj_error;
+        node["ransac_iter"] >> ransac_iter;
+        node["ransac_conf"] >> ransac_conf;
+        node["min_depth"] >> min_depth;
+        node["max_depth"] >> max_depth;
+        node["smoothed_alpha"] >> smoothed_alpha;
+    }
 };
 
 class VelocityTracker {
@@ -48,11 +66,13 @@ private:
     }
 
 public:
-    VelocityTracker() : fx_(0), fy_(0), cx_(0), cy_(0), smoothed_velocity_(0.), vel_ms_(0.) {}
-
-    void Init(const cv::Mat& K, const VelocityTrackerParams& p = VelocityTrackerParams()) {
-        K_ = K.clone();
+    VelocityTracker(const VelocityTrackerParams& p = VelocityTrackerParams())
+     : fx_(0), fy_(0), cx_(0), cy_(0), smoothed_velocity_(0.), vel_ms_(0.) {
         params_ = p;
+     }
+
+    void InitMatrixCam(const cv::Mat& K) {
+        K_ = K.clone();
         fx_ = static_cast<float>(K_.at<double>(0, 0));
         fy_ = static_cast<float>(K_.at<double>(1, 1));
         cx_ = static_cast<float>(K_.at<double>(0, 2));

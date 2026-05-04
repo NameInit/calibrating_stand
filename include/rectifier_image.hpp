@@ -5,19 +5,38 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <iostream>
-#include "../.config/config_rectifier.hpp"
 
 
 struct RectifierFileParams{
-	std::string leftin_filename = rectifier::filename_imleft_in;
-	std::string rightin_filename = rectifier::filename_imright_in;
-	std::string leftout_filename = rectifier::filename_imleft_out;
-	std::string rightout_filename = rectifier::filename_imright_out;
+	std::string leftin_filename;
+	std::string rightin_filename;
+	std::string leftout_filename;
+	std::string rightout_filename;
+	std::string path_left_imgs_directory;
+	std::string path_right_imgs_directory;
+	std::string extension;
+	std::string path_out;
+	int num_test_img;
+
+	RectifierFileParams(const std::string& config_name = "../.config/params.yml"){
+		cv::FileStorage fs(config_name, cv::FileStorage::READ);
+        cv::FileNode node = fs["path"];
+
+		node["path_out"] >> path_out;
+		node["num_test_img"] >> num_test_img;
+		node["path_left_imgs_directory"] >> path_left_imgs_directory;
+		node["path_right_imgs_directory"] >> path_right_imgs_directory;
+		node["extension"] >> extension;
+		leftin_filename = path_left_imgs_directory+"left"+std::to_string(num_test_img)+"."+extension;
+		rightin_filename = path_right_imgs_directory+"right"+std::to_string(num_test_img)+"."+extension;
+		leftout_filename = path_out+"left_rect"+"."+extension;
+		rightout_filename = path_out+"right_rect"+"."+extension;
+	}
 };
 
 class RectifierImage{
 	public:
-		RectifierImage(const std::string& filename_calib_stereo)
+		RectifierImage(const std::string& filename_calib_stereo="../result/cam_stereo.yml")
 		: fs1_(filename_calib_stereo, cv::FileStorage::READ) {
 			fs1_["K1"] >> K1_;
 			fs1_["K2"] >> K2_;

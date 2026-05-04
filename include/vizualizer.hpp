@@ -1,8 +1,24 @@
 #pragma once
 
-
 #include <opencv2/opencv.hpp>
 #include <iostream>
+
+
+struct VizualizerParams{
+    std::string win_name;
+    double max_disp;
+    cv::Size size_frame_vis;
+
+    VizualizerParams(const std::string& config_name = "../.config/params.yml"){
+        cv::FileStorage fs(config_name, cv::FileStorage::READ);
+		cv::FileNode vizualizer_node = fs["vizualizer"];
+        cv::FileNode stereo_sgbm_node = fs["stereo_sgbm"];
+
+        vizualizer_node["win_name"] >> win_name;
+        stereo_sgbm_node["num_disp"] >> max_disp;
+        vizualizer_node["size_frame_vis"] >> size_frame_vis;
+    }
+};
 
 class Vizualizer{
     private:
@@ -12,8 +28,8 @@ class Vizualizer{
         cv::Mat frame_vis_;
         cv::Size size_frame_vis_;
     public:
-        Vizualizer(const std::string& win_name, double max_disp, const cv::Size& size_frame_vis = {1280,800})
-            : win_name_(win_name), max_disp_(max_disp), size_frame_vis_(size_frame_vis){
+        Vizualizer(const VizualizerParams& p = VizualizerParams())
+            : win_name_(p.win_name), max_disp_(p.max_disp), size_frame_vis_(p.size_frame_vis){
             cv::namedWindow(win_name_, cv::WINDOW_AUTOSIZE);
         }
         ~Vizualizer(){

@@ -7,38 +7,38 @@
 class FPSCounter {
 private:
     double update_interval;
-    int counter;
-    double fps;
-    std::chrono::time_point<std::chrono::steady_clock> timer;
+    int counter_;
+    double fps_;
+    std::chrono::time_point<std::chrono::steady_clock> timer_;
 
 public:
-    FPSCounter(double update_interval = 1.0) 
-        : update_interval(update_interval), counter(0), fps(0.0) {
-        timer = std::chrono::steady_clock::now();
+    FPSCounter(double update_interval_ = 1.0) 
+        : update_interval(update_interval), counter_(0), fps_(0.0) {
+        timer_ = std::chrono::steady_clock::now();
     }
 
     double update() {
-        counter++;
+        counter_++;
         auto current_time = std::chrono::steady_clock::now();
         
-        std::chrono::duration<double> time_diff = current_time - timer;
+        std::chrono::duration<double> time_diff = current_time - timer_;
 
         if (time_diff.count() >= update_interval) {
-            fps = counter / time_diff.count();
-            counter = 0;
-            timer = current_time;
+            fps_ = counter_ / time_diff.count();
+            counter_ = 0;
+            timer_ = current_time;
         }
 
-        return fps;
+        return fps_;
     }
 
     double get_fps(){
-        return fps;
+        return fps_;
     } 
 
     std::string get_fps_text() const {
         std::stringstream ss;
-        ss << "FPS: " << std::fixed << std::setprecision(1) << fps;
+        ss << "FPS: " << std::fixed << std::setprecision(1) << fps_;
         return ss.str();
     }
 };

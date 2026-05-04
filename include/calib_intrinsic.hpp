@@ -7,19 +7,35 @@
 #include <iostream>
 #include <filesystem>
 #include <cstring>
-#include "../.config/config_chessboard.hpp"
-#include "../.config/config_calibrating_cam.hpp"
 
 struct BoardParams {
-    int board_width = chessboard::board_width;
-    int board_height = chessboard::board_height;
-    float square_size = chessboard::square_size;
+    int board_width;
+    int board_height;
+    float square_size;
+
+	BoardParams(const std::string& config_name = "../.config/params.yml"){
+		cv::FileStorage fs(config_name, cv::FileStorage::READ);
+		cv::FileNode node = fs["chessboard"];
+
+		node["board_width"] >> board_width;
+		node["board_height"] >> board_height;
+		node["square_size"] >> square_size;
+	}
 };
 
 struct DatasetParams{
-	std::string imgs_directory = calibrating_cams::path_imgs_directory;
-	std::string imgs_filename = calibrating_cams::img_left_filename;
-	std::string extension = calibrating_cams::extension;
+	std::string imgs_directory;
+	std::string imgs_filename;
+	std::string extension;
+
+	DatasetParams(const std::string& config_name = "../.config/params.yml"){
+		cv::FileStorage fs(config_name, cv::FileStorage::READ);
+		cv::FileNode node = fs["path"];
+		
+		node["path_left_imgs_directory"] >> imgs_directory;
+		node["img_left_filename"] >> imgs_filename;
+		node["extension"] >> extension;
+	}
 };
 
 class CalibratingCam{

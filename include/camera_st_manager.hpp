@@ -4,6 +4,23 @@
 #include <iostream>
 #include <opencv2/opencv.hpp>
 
+struct CameraSTManagerParams{
+    int video_id;
+    cv::Size size_im;
+    int api_preference;
+    bool use_mjpg;
+
+    CameraSTManagerParams(const std::string& config_name = "../.config/params.yml"){
+        cv::FileStorage fs(config_name, cv::FileStorage::READ);
+        cv::FileNode node = fs["camera"];
+
+        node["video_id"] >> video_id;
+        node["size_im"] >> size_im;
+        node["api_preference"] >> api_preference;
+        node["use_mjpg"] >> use_mjpg;
+    }
+};
+
 class CameraSTManager{
     private:
         int video_id_;
@@ -11,13 +28,13 @@ class CameraSTManager{
         cv::Size size_im_;
         cv::Mat frame_left_, frame_right_;
     public:
-        CameraSTManager(int video_id, cv::Size size_im=cv::Size(), int api_preference = cv::CAP_ANY, bool use_mjpg = false) 
-            : video_id_(video_id), size_im_(size_im), cap_(video_id_, api_preference) {
-            if(use_mjpg)
+        CameraSTManager(const CameraSTManagerParams& p = CameraSTManagerParams()) 
+            : video_id_(p.video_id), size_im_(p.size_im), cap_(p.video_id, p.api_preference) {
+            if(p.use_mjpg)
                 cap_.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M', 'J', 'P', 'G')); //buffer
-            if(!size_im.empty()){
-                cap_.set(cv::CAP_PROP_FRAME_WIDTH, size_im.width*2);
-                cap_.set(cv::CAP_PROP_FRAME_HEIGHT, size_im.height);
+            if(!p.size_im.empty()){
+                cap_.set(cv::CAP_PROP_FRAME_WIDTH, p.size_im.width*2);
+                cap_.set(cv::CAP_PROP_FRAME_HEIGHT, p.size_im.height);
             }
             if (cap_.isOpened()) {
                 int real_w = static_cast<int>(cap_.get(cv::CAP_PROP_FRAME_WIDTH));

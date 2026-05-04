@@ -7,19 +7,37 @@
 #include <filesystem>
 #include <cstring>
 #include <iostream>
-#include "../.config/config_calibrating_stereo.hpp"
 
-struct StereoFilesParams{
-	std::string leftcalib_file = calibrating_stereo::filename_left_cam_params;
-	std::string rightcalib_file = calibrating_stereo::filename_right_cam_params;
+struct CalibratingStereoParams{
+	std::string leftcalib_file;
+	std::string rightcalib_file;
+
+	CalibratingStereoParams(const std::string& config_name = "../.config/params.yml"){
+		cv::FileStorage fs(config_name, cv::FileStorage::READ);
+		cv::FileNode node = fs["path"];
+
+		node["filename_left_cam_params"] >> leftcalib_file;
+		node["filename_right_cam_params"] >> rightcalib_file;
+	}
 };
 
 struct StereoDatasetParams{
-	std::string leftimg_dir = calibrating_stereo::path_imgs_directory;
-	std::string rightimg_dir = calibrating_stereo::path_imgs_directory;
-	std::string leftimg_filename = calibrating_stereo::img_left_filename;
-	std::string rightimg_filename = calibrating_stereo::img_right_filename;
-	std::string extension = calibrating_stereo::extension;
+	std::string leftimg_dir;
+	std::string rightimg_dir;
+	std::string leftimg_filename;
+	std::string rightimg_filename;
+	std::string extension;
+
+	StereoDatasetParams(const std::string& config_name = "../.config/params.yml"){
+		cv::FileStorage fs(config_name, cv::FileStorage::READ);
+		cv::FileNode node = fs["path"];
+
+		node["path_left_imgs_directory"] >> leftimg_dir;
+		node["path_right_imgs_directory"] >> rightimg_dir;
+		node["img_left_filename"] >> leftimg_filename;
+		node["img_right_filename"] >> rightimg_filename;
+		node["extension"] >> extension;
+	}
 };
 
 class CalibratingStereo{
@@ -48,7 +66,7 @@ class CalibratingStereo{
 			return true;
 		}
 	public:
-		CalibratingStereo(const StereoFilesParams& p = StereoFilesParams()) 
+		CalibratingStereo(const CalibratingStereoParams& p = CalibratingStereoParams()) 
 		: fsl_(p.leftcalib_file, cv::FileStorage::READ), fsr_(p.rightcalib_file, cv::FileStorage::READ){
 			if (!fsl_.isOpened()) {
 				std::cerr << "Error: Cannot open left calibration file: " << p.leftcalib_file << std::endl;

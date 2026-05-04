@@ -19,6 +19,7 @@
 #include "roi_manager.hpp"
 #include "vizualizer.hpp"
 
+
 class StereoPipeline {
 private:
     CameraSTManager camera_;
@@ -54,22 +55,17 @@ private:
     cv::Mat vel_shared_cur_left_, vel_shared_prev_left_, vel_shared_prev_depth_map_; 
 
 public:
-    StereoPipeline(const std::string& calib_file_path,
-                   int min_disp, int num_disp, int block_size, int p1, int p2,
-                   int uniqueness_ratio, int speckle_ws, int speckle_range,
-                   bool use_wls, int wls_lambda, float wls_sigma, int median_blur_size) 
-        : camera_(2,{1280, 800},cv::CAP_V4L2,true),
+    StereoPipeline(const std::string& calib_file_path) 
+        : camera_(),
           stereoSGBM_(calib_file_path),
           fps_counter_(),
           velocity_tracker_(),
           roi_manager_(),
-          vizualizer_("Left",num_disp)
+          vizualizer_()
     {
-        stereoSGBM_.Create(min_disp, num_disp, block_size, p1, p2,
-                          uniqueness_ratio, speckle_ws, speckle_range,
-                          use_wls, wls_lambda, wls_sigma, median_blur_size);
+        stereoSGBM_.Create();
 
-        velocity_tracker_.Init(stereoSGBM_.GetMatrixLeft());
+        velocity_tracker_.InitMatrixCam(stereoSGBM_.GetMatrixLeft());
         velocity_tracker_.Start(); //старт таймера внутри для подсчёта dt
 
         roi_manager_.SetConstraint({0,0}, camera_.getSizeImage());
