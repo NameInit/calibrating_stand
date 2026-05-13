@@ -5,38 +5,38 @@
 #include <string>
 #include <iostream>
 
+#include "params_manager.hpp"
 
 struct StereoSGBMParamsCreate{
-    int min_disp;
-    int num_disp;
-    int block_size;
-    int p1;
-    int p2;
-    int uniqueness_ratio;
-    int speckle_ws;
-    int speckle_range;
-    bool use_wls;
-    int wls_lambda;
-    float wls_sigma;
-    int median_blur_size;
+    int &min_disp;
+    int &max_disp;
+    int &block_size;
+    int &uniqueness_ratio;
+    int &speckle_ws;
+    int &speckle_range;
+    bool &use_wls;
+    int &wls_lambda;
+    double &wls_sigma;
+    int &median_blur_size;
 
-    StereoSGBMParamsCreate(const std::string& config_name = "../.config/params.yml"){
-        cv::FileStorage fs(config_name, cv::FileStorage::READ);
-        cv::FileNode node = fs["stereo_sgbm"];
+    StereoSGBMParamsCreate() :
+        min_disp(ParamsManager::getInstance()["stereo_sgbm"]["min_disp"]),
+        max_disp(ParamsManager::getInstance()["stereo_sgbm"]["max_disp"]),
+        block_size(ParamsManager::getInstance()["stereo_sgbm"]["block_size"]),
+        uniqueness_ratio(ParamsManager::getInstance()["stereo_sgbm"]["uniqueness_ratio"]),
+        speckle_ws(ParamsManager::getInstance()["stereo_sgbm"]["speckle_ws"]),
+        speckle_range(ParamsManager::getInstance()["stereo_sgbm"]["speckle_range"]),
+        use_wls(ParamsManager::getInstance()["stereo_sgbm"]["use_wls"]),
+        wls_lambda(ParamsManager::getInstance()["stereo_sgbm"]["wls_lambda"]),
+        wls_sigma(ParamsManager::getInstance()["stereo_sgbm"]["wls_sigma"]),
+        median_blur_size(ParamsManager::getInstance()["stereo_sgbm"]["median_blur_size"]) {}
 
-        node["min_disp"] >> min_disp;
-        node["num_disp"] >> num_disp;
-        node["block_size"] >> block_size;
-        node["uniqueness_ratio"] >> uniqueness_ratio;
-        node["speckle_ws"] >> speckle_ws;
-        node["speckle_range"] >> speckle_range;
-        node["use_wls"] >> use_wls;
-        node["wls_lambda"] >> wls_lambda;
-        node["wls_sigma"] >> wls_sigma;
-        node["median_blur_size"] >> median_blur_size;
+    int getP1() const {
+        return 8 * 3 * block_size*block_size;
+    }
 
-        p1 = 8 * 3 * block_size*block_size;
-        p2 = 32 * 3 * block_size*block_size;
+    int getP2() const {
+        return 32 * 3 * block_size*block_size;
     }
 };
 
@@ -49,12 +49,11 @@ private:
     cv::Ptr<cv::StereoSGBM> stereo_bm_left_;
     cv::Ptr<cv::StereoMatcher> stereo_bm_right_;
     cv::Ptr<cv::ximgproc::DisparityWLSFilter> wls_filter_;
-
-    bool use_wls_filter_ = false;
-    int median_blur_ksize_ = 0;
+    cv::Ptr<cv::CLAHE> clahe_;
+    
+    StereoSGBMParamsCreate params_;
 
     cv::Size current_img_size_ = cv::Size(0, 0);
-    cv::Ptr<cv::CLAHE> clahe_;
 
 public:
     StereoSGBM(const std::string &filename = "../result/cam_stereo.yml") {
@@ -75,22 +74,17 @@ public:
     const cv::Mat& getD1() const { return D1_; }
     const cv::Mat& getQ()  const { return Q_; }
 
-    void Create(const StereoSGBMParamsCreate& p = StereoSGBMParamsCreate()) {
-        
-        use_wls_filter_ = p.use_wls;
-        stereo_bm_left_ = cv::StereoSGBM::create(p.min_disp, p.num_disp, p.block_size, p.p1, p.p2, 
-                                                2, 63, p.uniqueness_ratio, p.speckle_ws, 
-                                                p.speckle_range, cv::StereoSGBM::MODE_SGBM_3WAY);
+    void Create() {
+        stereo_bm_left_ = cv::StereoSGBM::create(params_.min_disp, params_.max_disp, params_.block_size, params_.getP1(), params_.getP2(), 
+                                                2, 63, params_.uniqueness_ratio, params_.speckle_ws, 
+                                                params_.speckle_range, cv::StereoSGBM::MODE_SGBM_3WAY);
 
-        if (use_wls_filter_) {
+        if (params_.use_wls) {
             stereo_bm_right_ = cv::ximgproc::createRightMatcher(stereo_bm_left_);
             wls_filter_ = cv::ximgproc::createDisparityWLSFilter(stereo_bm_left_);
-            wls_filter_->setLambda(p.wls_lambda);
-            wls_filter_->setSigmaColor(p.wls_sigma);
+            wls_filter_->setLambda(params_.wls_lambda);
+            wls_filter_->setSigmaColor(params_.wls_sigma);
         }
-
-        median_blur_ksize_ = (p.median_blur_size > 0 && p.median_blur_size % 2 == 0) 
-                             ? p.median_blur_size + 1 : p.median_blur_size;
 
         clahe_ = cv::createCLAHE(2.0, cv::Size(8, 8));
     }
@@ -114,14 +108,14 @@ public:
         cv::Mat disp_left, disp_right, filtered_disp;
         stereo_bm_left_->compute(img_l_rect, img_r_rect, disp_left);
 
-        if (use_wls_filter_ && !stereo_bm_right_.empty()) {
+        if (params_.use_wls && !stereo_bm_right_.empty()) {
             stereo_bm_right_->compute(img_r_rect, img_l_rect, disp_right);
             wls_filter_->filter(disp_left, img_l_rect, filtered_disp, disp_right);
         } else {
             filtered_disp = disp_left;
         }
 
-        if (median_blur_ksize_ > 0) cv::medianBlur(filtered_disp, filtered_disp, median_blur_ksize_);
+        if (params_.median_blur_size > 0) cv::medianBlur(filtered_disp, filtered_disp, params_.median_blur_size);
 
         cv::Mat disp_float;
         filtered_disp.convertTo(disp_float, CV_32F, 1.0 / 16.0);
@@ -140,5 +134,9 @@ public:
 
     cv::Mat GetMatrixLeft(){
         return K1_;
+    }
+
+    StereoSGBMParamsCreate& getParams(){
+        return params_;
     }
 };

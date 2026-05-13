@@ -4,28 +4,27 @@
 #include <iostream>
 #include <cmath>
 
+#include "params_manager.hpp"
+
 struct ROIManagerParams{
     cv::Size min_size=cv::Size(); 
     cv::Size max_size=cv::Size(); 
-    int x;
-    int y;
-    int width;
-    int height;
+    int &x;
+    int &y;
+    int &width;
+    int &height;
 
-    ROIManagerParams(const std::string& config_name = "../.config/params.yml"){
-        cv::FileStorage fs(config_name, cv::FileStorage::READ);
-        cv::FileNode node = fs["roi"];
-
-        node["x"] >> x;
-        node["y"] >> y;
-        node["width"] >> width;
-        node["height"] >> height;
-    }
+    ROIManagerParams() :
+        x(ParamsManager::getInstance()["roi"]["x"]),
+        y(ParamsManager::getInstance()["roi"]["y"]),
+        width(ParamsManager::getInstance()["roi"]["width"]),
+        height(ParamsManager::getInstance()["roi"]["height"]) {}
 };
 
 class ROIManager{
     private:
         int x_, y_, width_, height_;
+        
         cv::Size max_size_, min_size_;
         bool initialized_constraint_;
 

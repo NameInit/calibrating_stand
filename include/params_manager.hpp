@@ -17,7 +17,7 @@ public:
     using YamlArray = std::vector<YamlValue>;
 
     struct YamlValue {
-        std::variant<int, double, bool, std::string, YamlArray, YamlMap> data;
+        std::variant<int, double, bool, std::string, cv::Size, YamlArray, YamlMap> data;
 
         template<typename T> bool is() const { return std::holds_alternative<T>(data); }
         template<typename T> const T& get() const { return std::get<T>(data); }
@@ -91,24 +91,25 @@ private:
     YamlMap cache;
     std::string last_filepath;
 
-    void updateNode(YamlValue& existing_node, const cv::FileNode& new_node) {
+    void updateNode_(YamlValue& existing_node, const cv::FileNode& new_node) {
         if (new_node.isMap()) {
             if (!std::holds_alternative<YamlMap>(existing_node.data)) {
-                existing_node = parseNode(new_node);
+                existing_node = parseNode_(new_node);
                 return;
             }
             YamlMap& existing_map = std::get<YamlMap>(existing_node.data);
             for (auto it = new_node.begin(); it != new_node.end(); ++it) {
-                std::string key = (*it).name();
+                cv::FileNode sub_node = *it;
+                std::string key = sub_node.name();
                 if (existing_map.find(key) != existing_map.end()) {
-                    updateNode(existing_map[key], *it);
+                    updateNode_(existing_map[key], sub_node);
                 } else {
-                    existing_map[key] = parseNode(*it);
+                    existing_map[key] = parseNode_(sub_node);
                 }
             }
         } 
         else if (new_node.isSeq()) {
-            existing_node = parseNode(new_node);
+            existing_node = parseNode_(new_node);
         } 
         else {
             if (new_node.isInt()) {
@@ -137,25 +138,36 @@ private:
                     existing_node.data = str;
                 }
             }
+            else if (new_node.isSeq() && std::holds_alternative<cv::Size>(existing_node.data)) {
+                YamlValue fresh = parseNode_(new_node);
+                if (std::holds_alternative<cv::Size>(fresh.data)) {
+                    std::get<cv::Size>(existing_node.data) = std::get<cv::Size>(fresh.data);
+                }
+            }
         }
     }
 
-    YamlValue parseNode(const cv::FileNode& node) {
+    YamlValue parseNode_(const cv::FileNode& node) {
         YamlValue result;
 
         if (node.isMap()) {
             YamlMap nested_map;
             for (auto it = node.begin(); it != node.end(); ++it) {
-                nested_map[(*it).name()] = parseNode(*it);
+                cv::FileNode sub_node = *it;
+                nested_map[sub_node.name()] = parseNode_(sub_node);
             }
             result.data = nested_map;
         }
         else if (node.isSeq()) {
             YamlArray arr;
             for (auto it = node.begin(); it != node.end(); ++it) {
-                arr.push_back(parseNode(*it));
+                arr.push_back(parseNode_(*it));
             }
-            result.data = arr;
+            if (arr.size() == 2 && arr[0].is<int>() && arr[1].is<int>()) {
+                result.data = cv::Size(arr[0].get<int>(), arr[1].get<int>());
+            } else {
+                result.data = arr;
+            }
         } 
         else if (node.isInt()) {
             result.data = static_cast<int>(node);
@@ -212,11 +224,12 @@ public:
 
         cv::FileNode root = fs.root();
         for (auto it = root.begin(); it != root.end(); ++it) {
-            std::string section_name = (*it).name();
+            cv::FileNode section = *it;
+            std::string section_name = section.name();
             if (cache.find(section_name) != cache.end()) {
-                updateNode(cache[section_name], *it);
+                updateNode_(cache[section_name], section);
             } else {
-                cache[section_name] = parseNode(*it);
+                cache[section_name] = parseNode_(section);
             }
         }
         return true;
@@ -233,7 +246,8 @@ public:
         cache.clear();
         cv::FileNode root = fs.root();
         for (auto it = root.begin(); it != root.end(); ++it) {
-            cache[(*it).name()] = parseNode(*it);
+            cv::FileNode section = *it;
+            cache[section.name()] = parseNode_(section);
         }
         return true;
     }

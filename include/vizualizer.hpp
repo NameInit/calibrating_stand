@@ -15,7 +15,7 @@ struct VizualizerParams{
         cv::FileNode stereo_sgbm_node = fs["stereo_sgbm"];
 
         vizualizer_node["win_name"] >> win_name;
-        stereo_sgbm_node["num_disp"] >> max_disp;
+        stereo_sgbm_node["max_disp"] >> max_disp;
         vizualizer_node["size_frame_vis"] >> size_frame_vis;
     }
 };

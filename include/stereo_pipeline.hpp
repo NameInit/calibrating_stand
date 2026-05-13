@@ -68,7 +68,7 @@ public:
         velocity_tracker_.InitMatrixCam(stereoSGBM_.GetMatrixLeft());
         velocity_tracker_.Start(); //старт таймера внутри для подсчёта dt
 
-        roi_manager_.SetConstraint({0,0}, camera_.getSizeImage());
+        roi_manager_.SetConstraint({1,1}, camera_.getSizeImage());
     }
 
     ~StereoPipeline(){

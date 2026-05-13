@@ -9,35 +9,27 @@
 #include <iostream>
 
 struct CalibratingStereoParams{
-	std::string leftcalib_file;
-	std::string rightcalib_file;
+	std::string &leftcalib_file;
+	std::string &rightcalib_file;
 
-	CalibratingStereoParams(const std::string& config_name = "../.config/params.yml"){
-		cv::FileStorage fs(config_name, cv::FileStorage::READ);
-		cv::FileNode node = fs["path"];
-
-		node["filename_left_cam_params"] >> leftcalib_file;
-		node["filename_right_cam_params"] >> rightcalib_file;
-	}
+	CalibratingStereoParams(const std::string& config_name = "../.config/params.yml") :
+		leftcalib_file(ParamsManager::getInstance()["path"]["filename_left_cam_params"]),
+		rightcalib_file(ParamsManager::getInstance()["path"]["filename_right_cam_params"]) {}
 };
 
 struct StereoDatasetParams{
-	std::string leftimg_dir;
-	std::string rightimg_dir;
-	std::string leftimg_filename;
-	std::string rightimg_filename;
-	std::string extension;
+	std::string &leftimg_dir;
+	std::string &rightimg_dir;
+	std::string &leftimg_filename;
+	std::string &rightimg_filename;
+	std::string &extension;
 
-	StereoDatasetParams(const std::string& config_name = "../.config/params.yml"){
-		cv::FileStorage fs(config_name, cv::FileStorage::READ);
-		cv::FileNode node = fs["path"];
-
-		node["path_left_imgs_directory"] >> leftimg_dir;
-		node["path_right_imgs_directory"] >> rightimg_dir;
-		node["img_left_filename"] >> leftimg_filename;
-		node["img_right_filename"] >> rightimg_filename;
-		node["extension"] >> extension;
-	}
+	StereoDatasetParams(const std::string& config_name = "../.config/params.yml") :
+		leftimg_dir(ParamsManager::getInstance()["path"]["path_left_imgs_directory"]),
+		rightimg_dir(ParamsManager::getInstance()["path"]["path_right_imgs_directory"]),
+		leftimg_filename(ParamsManager::getInstance()["path"]["img_left_filename"]),
+		rightimg_filename(ParamsManager::getInstance()["path"]["img_right_filename"]),
+		extension(ParamsManager::getInstance()["path"]["extension"]) {}
 };
 
 class CalibratingStereo{

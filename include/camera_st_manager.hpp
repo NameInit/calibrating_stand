@@ -4,21 +4,19 @@
 #include <iostream>
 #include <opencv2/opencv.hpp>
 
+#include "params_manager.hpp"
+
 struct CameraSTManagerParams{
-    int video_id;
-    cv::Size size_im;
-    int api_preference;
-    bool use_mjpg;
+    int &video_id;
+    cv::Size &size_im;
+    int &api_preference;
+    bool &use_mjpg;
 
-    CameraSTManagerParams(const std::string& config_name = "../.config/params.yml"){
-        cv::FileStorage fs(config_name, cv::FileStorage::READ);
-        cv::FileNode node = fs["camera"];
-
-        node["video_id"] >> video_id;
-        node["size_im"] >> size_im;
-        node["api_preference"] >> api_preference;
-        node["use_mjpg"] >> use_mjpg;
-    }
+    CameraSTManagerParams() :
+        video_id(ParamsManager::getInstance()["camera"]["video_id"]),
+        size_im(ParamsManager::getInstance()["camera"]["size_im"]),
+        api_preference(ParamsManager::getInstance()["camera"]["api_preference"]),
+        use_mjpg(ParamsManager::getInstance()["camera"]["use_mjpg"]) {}
 };
 
 class CameraSTManager{

@@ -4,37 +4,35 @@
 #include <iostream>
 #include <vector>
 
+#include "params_manager.hpp"
+
 struct VelocityTrackerParams {
-    int max_corners;
-    double quality_level;
-    double min_distance;
-    int min_pnp_points;
-    int min_inliers;
-    double inlier_ratio_threshold;
-    double ransac_reproj_error;
-    int ransac_iter;
-    double ransac_conf;
-    float min_depth;
-    float max_depth;
-    double smoothed_alpha;
+    int &max_corners;
+    double &quality_level;
+    double &min_distance;
+    int &min_pnp_points;
+    int &min_inliers;
+    double &inlier_ratio_threshold;
+    double &ransac_reproj_error;
+    int &ransac_iter;
+    double &ransac_conf;
+    double &min_depth;
+    double &max_depth;
+    double &smoothed_alpha;
 
-    VelocityTrackerParams(const std::string& config_name = "../.config/params.yml"){
-        cv::FileStorage fs(config_name, cv::FileStorage::READ);
-        cv::FileNode node = fs["velocity_tracker"];
-
-        node["max_corners"] >> max_corners;
-        node["quality_level"] >> quality_level;
-        node["min_distance"] >> min_distance;
-        node["min_pnp_points"] >> min_pnp_points;
-        node["min_inliers"] >> min_inliers;
-        node["inlier_ratio_threshold"] >> inlier_ratio_threshold;
-        node["ransac_reproj_error"] >> ransac_reproj_error;
-        node["ransac_iter"] >> ransac_iter;
-        node["ransac_conf"] >> ransac_conf;
-        node["min_depth"] >> min_depth;
-        node["max_depth"] >> max_depth;
-        node["smoothed_alpha"] >> smoothed_alpha;
-    }
+    VelocityTrackerParams() :
+        max_corners(ParamsManager::getInstance()["velocity_tracker"]["max_corners"]),
+        quality_level(ParamsManager::getInstance()["velocity_tracker"]["quality_level"]),
+        min_distance(ParamsManager::getInstance()["velocity_tracker"]["min_distance"]),
+        min_pnp_points(ParamsManager::getInstance()["velocity_tracker"]["min_pnp_points"]),
+        min_inliers(ParamsManager::getInstance()["velocity_tracker"]["min_inliers"]),
+        inlier_ratio_threshold(ParamsManager::getInstance()["velocity_tracker"]["inlier_ratio_threshold"]),
+        ransac_reproj_error(ParamsManager::getInstance()["velocity_tracker"]["ransac_reproj_error"]),
+        ransac_iter(ParamsManager::getInstance()["velocity_tracker"]["ransac_iter"]),
+        ransac_conf(ParamsManager::getInstance()["velocity_tracker"]["ransac_conf"]),
+        min_depth(ParamsManager::getInstance()["velocity_tracker"]["min_depth"]),
+        max_depth(ParamsManager::getInstance()["velocity_tracker"]["max_depth"]),
+        smoothed_alpha(ParamsManager::getInstance()["velocity_tracker"]["smoothed_alpha"]) {}
 };
 
 class VelocityTracker {
@@ -66,10 +64,8 @@ private:
     }
 
 public:
-    VelocityTracker(const VelocityTrackerParams& p = VelocityTrackerParams())
-     : fx_(0), fy_(0), cx_(0), cy_(0), smoothed_velocity_(0.), vel_ms_(0.) {
-        params_ = p;
-     }
+    VelocityTracker()
+     : fx_(0), fy_(0), cx_(0), cy_(0), smoothed_velocity_(0.), vel_ms_(0.) {}
 
     void InitMatrixCam(const cv::Mat& K) {
         K_ = K.clone();
@@ -163,5 +159,9 @@ public:
     void Start(){
         prev_time_=std::chrono::steady_clock::now();
         return ;
+    }
+
+    VelocityTrackerParams& getParams(){
+        return params_;
     }
 };
