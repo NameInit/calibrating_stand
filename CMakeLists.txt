@@ -25,11 +25,13 @@ add_executable(stream_depth src/stream_depth.cpp)
 add_executable(calibrate src/calibrate.cpp)
 add_executable(generator_stereo_x4l2 "src/generator_stereo_x4l2.cpp")
 add_executable(test_life_stereo_x4l2 "test/test_life_stereo_x4l2.cpp")
+add_executable("test" "src/test.cpp")
 
 target_link_libraries(stream_depth PRIVATE ${COMMON_LIBS})
 target_link_libraries(calibrate PRIVATE ${COMMON_LIBS})
 target_link_libraries(generator_stereo_x4l2 PRIVATE ${COMMON_LIBS})
 target_link_libraries(test_life_stereo_x4l2 PRIVATE ${COMMON_LIBS})
+target_link_libraries("test" PRIVATE ${COMMON_LIBS})
 
 target_link_options(stream_depth PRIVATE ${COMMON_LINK_OPTIONS})
 target_link_options(generator_stereo_x4l2 PRIVATE ${COMMON_LINK_OPTIONS})

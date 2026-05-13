@@ -58,3 +58,6 @@ velocity_tracker:
   min_depth: 0.5
   max_depth: 20.0
   smoothed_alpha: 0.8
+
+test:
+  a: 7
