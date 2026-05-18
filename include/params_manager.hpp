@@ -235,7 +235,7 @@ public:
         return true;
     }
 
-    bool load(const std::string& filepath) {
+    bool load(const std::string& filepath = "../.config/params.yml") {
         cv::FileStorage fs(filepath, cv::FileStorage::READ);
         if (!fs.isOpened()) {
             std::cerr << "[ParamsManager] Ошибка открытия файла: " << filepath << std::endl;

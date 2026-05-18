@@ -1,18 +1,29 @@
 #include <iostream>
 #include <opencv2/opencv.hpp>
 
+#include "params_manager.hpp"
+
 int main(){
-    std::string out_dir = "../data/image/chessboard_10_7_paper_st_1280_800/";
-    cv::VideoCapture cap(2, cv::CAP_V4L2);
+    ParamsManager::getInstance().load();
+
+    cv::VideoCapture cap(
+        ParamsManager::getInstance()["camera"]["video_id"].get<int>(),
+        ParamsManager::getInstance()["camera"]["api_preference"].get<int>()
+    );
 
     if (!cap.isOpened()) {
         std::cerr << "Error: Cannot open cameras" << std::endl;
         return 1;
     }
 
-    cap.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M', 'J', 'P', 'G')); //buffer
-    cap.set(cv::CAP_PROP_FRAME_WIDTH, 1280*2);
-    cap.set(cv::CAP_PROP_FRAME_HEIGHT, 800);
+
+    if(ParamsManager::getInstance()["camera"]["use_mjpg"].get<bool>()){
+        cap.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M', 'J', 'P', 'G')); //buffer
+    }
+
+    cv::Size size_frame = ParamsManager::getInstance()["camera"]["size_im"].get<cv::Size>();
+    cap.set(cv::CAP_PROP_FRAME_WIDTH, size_frame.width*2);
+    cap.set(cv::CAP_PROP_FRAME_HEIGHT, size_frame.height);
 
     cv::Mat frame, left_img, right_img;
     int count=0;
@@ -40,8 +51,8 @@ int main(){
         else if (key == 32) {
             ++count;
             std::cout << "save" << count << std::endl;
-            cv::imwrite(out_dir+"left"+std::to_string(count)+".png", left_img);
-            cv::imwrite(out_dir+"right"+std::to_string(count)+".png", right_img);
+            cv::imwrite(ParamsManager::getInstance()["path"]["left_imgs_directory"].get<std::string>()+"left"+std::to_string(count)+".png", left_img);
+            cv::imwrite(ParamsManager::getInstance()["path"]["right_imgs_directory"].get<std::string>()+"right"+std::to_string(count)+".png", right_img);
         }
         
     }

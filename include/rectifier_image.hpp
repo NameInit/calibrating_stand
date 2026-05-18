@@ -17,10 +17,10 @@ struct RectifierImageParams {
     int &num_test_img;
 
     RectifierImageParams() :
-        path_out(ParamsManager::getInstance()["path"]["path_out"]),
+        path_out(ParamsManager::getInstance()["path"]["out_params"]),
         num_test_img(ParamsManager::getInstance()["path"]["num_test_img"]),
-        path_left_imgs_directory(ParamsManager::getInstance()["path"]["path_left_imgs_directory"]),
-        path_right_imgs_directory(ParamsManager::getInstance()["path"]["path_right_imgs_directory"]),
+        path_left_imgs_directory(ParamsManager::getInstance()["path"]["left_imgs_directory"]),
+        path_right_imgs_directory(ParamsManager::getInstance()["path"]["right_imgs_directory"]),
         extension(ParamsManager::getInstance()["path"]["extension"]) {}
 
     std::string getLeftInFilename() const {

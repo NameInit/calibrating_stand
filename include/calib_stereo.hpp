@@ -8,13 +8,25 @@
 #include <cstring>
 #include <iostream>
 
+#include "params_manager.hpp"
+
 struct CalibratingStereoParams{
-	std::string &leftcalib_file;
-	std::string &rightcalib_file;
+	std::string &filename_left_cam_params;
+	std::string &filename_right_cam_params;
+	std::string &path_params;
 
 	CalibratingStereoParams(const std::string& config_name = "../.config/params.yml") :
-		leftcalib_file(ParamsManager::getInstance()["path"]["filename_left_cam_params"]),
-		rightcalib_file(ParamsManager::getInstance()["path"]["filename_right_cam_params"]) {}
+		filename_left_cam_params(ParamsManager::getInstance()["path"]["filename_left_cam_params"]),
+		filename_right_cam_params(ParamsManager::getInstance()["path"]["filename_right_cam_params"]),
+		path_params(ParamsManager::getInstance()["path"]["out_params"]) {}
+
+	std::string getLeftCalibFile() const {
+		return path_params+filename_left_cam_params;
+	}
+
+	std::string getRightCalibFile() const {
+		return path_params+filename_right_cam_params;
+	}
 };
 
 struct StereoDatasetParams{
@@ -25,8 +37,8 @@ struct StereoDatasetParams{
 	std::string &extension;
 
 	StereoDatasetParams(const std::string& config_name = "../.config/params.yml") :
-		leftimg_dir(ParamsManager::getInstance()["path"]["path_left_imgs_directory"]),
-		rightimg_dir(ParamsManager::getInstance()["path"]["path_right_imgs_directory"]),
+		leftimg_dir(ParamsManager::getInstance()["path"]["left_imgs_directory"]),
+		rightimg_dir(ParamsManager::getInstance()["path"]["right_imgs_directory"]),
 		leftimg_filename(ParamsManager::getInstance()["path"]["img_left_filename"]),
 		rightimg_filename(ParamsManager::getInstance()["path"]["img_right_filename"]),
 		extension(ParamsManager::getInstance()["path"]["extension"]) {}
@@ -59,13 +71,13 @@ class CalibratingStereo{
 		}
 	public:
 		CalibratingStereo(const CalibratingStereoParams& p = CalibratingStereoParams()) 
-		: fsl_(p.leftcalib_file, cv::FileStorage::READ), fsr_(p.rightcalib_file, cv::FileStorage::READ){
+		: fsl_(p.getLeftCalibFile(), cv::FileStorage::READ), fsr_(p.getRightCalibFile(), cv::FileStorage::READ){
 			if (!fsl_.isOpened()) {
-				std::cerr << "Error: Cannot open left calibration file: " << p.leftcalib_file << std::endl;
+				std::cerr << "Error: Cannot open left calibration file: " << p.getLeftCalibFile() << std::endl;
 				exit(1);
 			}
 			if (!fsr_.isOpened()) {
-				std::cerr << "Error: Cannot open right calibration file: " << p.rightcalib_file << std::endl;
+				std::cerr << "Error: Cannot open right calibration file: " << p.getRightCalibFile() << std::endl;
 				exit(1);
 			}
 			

@@ -2,9 +2,12 @@
 #include "params_manager.hpp"
 
 int main() {
-    ParamsManager::getInstance().load("../.config/params.yml");
+    ParamsManager::getInstance().load();
 
-    StereoPipeline pipeline("../result/cam_stereo.yml");
+    StereoPipeline pipeline(
+        ParamsManager::getInstance()["path"]["out_params"].get<std::string>()
+        +ParamsManager::getInstance()["path"]["filename_stereo_cam_params"].get<std::string>()
+    );
 
     return pipeline.run();
 }

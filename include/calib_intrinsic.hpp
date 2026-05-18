@@ -27,9 +27,9 @@ struct DatasetParams{
 	std::string &extension;
 
 	DatasetParams() :
-	imgs_directory(ParamsManager::getInstance()["path"]["path_left_imgs_directory"]),
-	imgs_filename(ParamsManager::getInstance()["path"]["img_left_filename"]),
-	extension(ParamsManager::getInstance()["path"]["extension"]) {}
+		imgs_directory(ParamsManager::getInstance()["path"]["left_imgs_directory"]),
+		imgs_filename(ParamsManager::getInstance()["path"]["img_left_filename"]),
+		extension(ParamsManager::getInstance()["path"]["extension"]) {}
 };
 
 class CalibratingCam{
