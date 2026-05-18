@@ -7,8 +7,6 @@
 #include "params_manager.hpp"
 
 struct ROIManagerParams{
-    cv::Size min_size=cv::Size(); 
-    cv::Size max_size=cv::Size(); 
     int &x;
     int &y;
     int &width;
@@ -23,39 +21,35 @@ struct ROIManagerParams{
 
 class ROIManager{
     private:
-        int x_, y_, width_, height_;
-        
+        ROIManagerParams params_;
         cv::Size max_size_, min_size_;
         bool initialized_constraint_;
 
         void ApplyConstraintSize_(){
-            width_ = std::clamp(width_, min_size_.width, max_size_.width);
-            height_ = std::clamp(height_, min_size_.height, max_size_.height);
+            params_.width = std::clamp(params_.width, min_size_.width, max_size_.width);
+            params_.height = std::clamp(params_.height, min_size_.height, max_size_.height);
 
-            x_ = std::clamp(x_, width_/2, max_size_.width - (width_ - width_/2));
-            y_ = std::clamp(y_, height_/2, max_size_.height - (height_ - height_/2));
+            params_.x = std::clamp(params_.x, params_.width/2, max_size_.width - (params_.width - params_.width/2));
+            params_.y = std::clamp(params_.y, params_.height/2, max_size_.height - (params_.height - params_.height/2));
             return ;
         }
     public:
-        ROIManager(const ROIManagerParams& p = ROIManagerParams()) 
-                : min_size_(p.min_size), max_size_(p.max_size), x_(p.x), y_(p.y), width_(p.width), height_(p.height) {
-                    initialized_constraint_ = (max_size_.width!=0 && max_size_.height!=0);
-                }
+        ROIManager(){}
         ~ROIManager(){}
 
         void moveROI(int dx, int dy) {
-            x_ += dx;
-            y_ += dy;
+            params_.x += dx;
+            params_.y += dy;
         }
 
         void resizeROI(int dwidth, int dheight) {
-            width_ += dwidth;
-            height_ += dheight;
+            params_.width += dwidth;
+            params_.height += dheight;
         }
 
         cv::Rect GetRect() {
             ApplyConstraintSize_();
-            return cv::Rect(x_ - width_/2, y_ - height_/2, width_, height_);
+            return cv::Rect(params_.x - params_.width/2, params_.y - params_.height/2, params_.width, params_.height);
         }
 
         void SetConstraint(cv::Size min_size, cv::Size max_size){
@@ -66,5 +60,9 @@ class ROIManager{
 
         bool CheckInitConstraint(){
             return initialized_constraint_;
+        }
+
+        ROIManagerParams& getParams(){
+            return params_;
         }
 };

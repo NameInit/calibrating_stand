@@ -21,23 +21,25 @@ struct CameraSTManagerParams{
 
 class CameraSTManager{
     private:
-        int video_id_;
         cv::VideoCapture cap_;
-        cv::Size size_im_;
+        cv::Size real_size_im_;
         cv::Mat frame_left_, frame_right_;
+
+        CameraSTManagerParams params_;
     public:
-        CameraSTManager(const CameraSTManagerParams& p = CameraSTManagerParams()) 
-            : video_id_(p.video_id), size_im_(p.size_im), cap_(p.video_id, p.api_preference) {
-            if(p.use_mjpg)
+        CameraSTManager() {
+            cap_ = cv::VideoCapture(params_.video_id, params_.api_preference);
+
+            if(params_.use_mjpg)
                 cap_.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M', 'J', 'P', 'G')); //buffer
-            if(!p.size_im.empty()){
-                cap_.set(cv::CAP_PROP_FRAME_WIDTH, p.size_im.width*2);
-                cap_.set(cv::CAP_PROP_FRAME_HEIGHT, p.size_im.height);
+            if(!params_.size_im.empty()){
+                cap_.set(cv::CAP_PROP_FRAME_WIDTH, params_.size_im.width*2);
+                cap_.set(cv::CAP_PROP_FRAME_HEIGHT, params_.size_im.height);
             }
             if (cap_.isOpened()) {
                 int real_w = static_cast<int>(cap_.get(cv::CAP_PROP_FRAME_WIDTH));
                 int real_h = static_cast<int>(cap_.get(cv::CAP_PROP_FRAME_HEIGHT));
-                size_im_ = cv::Size(real_w / 2, real_h);
+                real_size_im_ = cv::Size(real_w / 2, real_h);
             }
         }
         ~CameraSTManager(){}
@@ -55,8 +57,8 @@ class CameraSTManager{
                 cv::Mat frame;
                 cap_.read(frame);
                 cv::cvtColor(frame,frame,cv::COLOR_RGB2GRAY);
-                frame_left_ = frame(cv::Rect(0,0,size_im_.width,size_im_.height));
-                frame_right_ = frame(cv::Rect(size_im_.width,0,size_im_.width,size_im_.height));
+                frame_left_ = frame(cv::Rect(0,0,real_size_im_.width,real_size_im_.height));
+                frame_right_ = frame(cv::Rect(real_size_im_.width,0,real_size_im_.width,real_size_im_.height));
                 return true;
 
             } catch (const std::exception& e) {
@@ -80,10 +82,14 @@ class CameraSTManager{
         }
 
         cv::Size getSizeImage(){
-            return size_im_;
+            return real_size_im_;
         }
 
         bool IsOpened() const {
             return cap_.isOpened();
+        }
+
+        CameraSTManagerParams& getParams(){
+            return params_;
         }
 };

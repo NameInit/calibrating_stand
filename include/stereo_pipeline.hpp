@@ -76,6 +76,10 @@ public:
         stopVelocityLoop_();
     }
 
+    StereoPipeline& build(const std::string& calib_file_path){
+        return *this;
+    }
+
     int run() {
         if (!camera_.IsOpened()) {
             std::cerr << "Failed to open camera" << std::endl;

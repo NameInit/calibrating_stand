@@ -22,18 +22,14 @@ struct VizualizerParams{
 
 class Vizualizer{
     private:
-        std::string win_name_;
-        double max_disp_;
-
         cv::Mat frame_vis_;
-        cv::Size size_frame_vis_;
+        VizualizerParams params_;
     public:
-        Vizualizer(const VizualizerParams& p = VizualizerParams())
-            : win_name_(p.win_name), max_disp_(p.max_disp), size_frame_vis_(p.size_frame_vis){
-            cv::namedWindow(win_name_, cv::WINDOW_AUTOSIZE);
+        Vizualizer(){
+            cv::namedWindow(params_.win_name, cv::WINDOW_AUTOSIZE);
         }
         ~Vizualizer(){
-            cv::destroyWindow(win_name_);
+            cv::destroyWindow(params_.win_name);
         }
 
         Vizualizer& render(const cv::Mat& cam_frame, const cv::Mat& disp_map, 
@@ -54,14 +50,14 @@ class Vizualizer{
             }
 
             cv::Mat disp_vis_roi, roi = disp_map(roi_rect);
-            roi.convertTo(disp_vis_roi, CV_8U, 255/max_disp_);
+            roi.convertTo(disp_vis_roi, CV_8U, 255/params_.max_disp);
             cv::applyColorMap(disp_vis_roi,disp_vis_roi,cv::COLORMAP_JET);
 
             disp_vis_roi.copyTo(frame_vis_(roi_rect));
             cv::rectangle(frame_vis_, roi_rect, cv::Scalar(255, 255, 255), 1);
 
-            if(frame_vis_.size()!=size_frame_vis_){
-                cv::resize(frame_vis_,frame_vis_,size_frame_vis_);
+            if(frame_vis_.size()!=params_.size_frame_vis){
+                cv::resize(frame_vis_,frame_vis_,params_.size_frame_vis);
             }
 
             std::string label = cv::format("FPS: %.1lf | DIST_CENTER: %.2lf m | VEL: %.1lf km/h", 
@@ -73,8 +69,12 @@ class Vizualizer{
 
         Vizualizer& show(){
             if(!frame_vis_.empty()){
-                cv::imshow(win_name_, frame_vis_);
+                cv::imshow(params_.win_name, frame_vis_);
             }
             return *this;
+        }
+
+        VizualizerParams& getParams(){
+            return params_;
         }
 };
