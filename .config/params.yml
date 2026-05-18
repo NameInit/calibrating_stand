@@ -1,6 +1,7 @@
 %YAML:1.0
 ---
 path:
+  device: "usb-3D_USB_Camera_3D_USB_Camera_01.00.00-video-index1"
   path_left_imgs_directory: "../data/image/chessboard_10_7_paper_st_1280_800/"
   path_right_imgs_directory: "../data/image/chessboard_10_7_paper_st_1280_800/"
   img_left_filename: "left"
@@ -8,12 +9,12 @@ path:
   extension: "png"
   filename_left_cam_params: "../result/cam_left.yml"
   filename_right_cam_params: "../result/cam_right.yml"
-  filename_stereo_cam_params: "filename_stereo_cam_params"
+  filename_stereo_cam_params: "../result/cam_stereo.yml"
   path_out: "../result/"
   num_test_img: 1
 
 camera:
-  video_id: 2
+  video_id: 0
   size_im: [1280, 800]
   api_preference: 200 #cv::CAP_V4L2
   use_mjpg: true
