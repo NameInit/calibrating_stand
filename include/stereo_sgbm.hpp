@@ -56,25 +56,16 @@ private:
     cv::Size current_img_size_ = cv::Size(0, 0);
 
 public:
+    StereoSGBM() {}
     StereoSGBM(const std::string &filename = "../result/cam_stereo.yml") {
-        cv::FileStorage fs(filename, cv::FileStorage::READ);
-        if (!fs.isOpened()) throw std::runtime_error("Cannot open: " + filename);
-
-        fs["K1"] >> K1_; fs["D1"] >> D1_;
-        fs["K2"] >> K2_; fs["D2"] >> D2_;
-        fs["R"]  >> R_;  fs["T"]  >> T_;
-        fs["R1"] >> R1_; fs["R2"] >> R2_;
-        fs["P1"] >> P1_; fs["P2"] >> P2_;
-        fs["Q"]  >> Q_;  fs["E"]  >> E_;
-        fs["F"]  >> F_;
-        fs.release();
+        load(filename);
     }
 
     const cv::Mat& getK1() const { return K1_; }
     const cv::Mat& getD1() const { return D1_; }
     const cv::Mat& getQ()  const { return Q_; }
 
-    void Create() {
+    void create() {
         stereo_bm_left_ = cv::StereoSGBM::create(params_.min_disp, params_.max_disp, params_.block_size, params_.getP1(), params_.getP2(), 
                                                 2, 63, params_.uniqueness_ratio, params_.speckle_ws, 
                                                 params_.speckle_range, cv::StereoSGBM::MODE_SGBM_3WAY);
@@ -89,7 +80,7 @@ public:
         clahe_ = cv::createCLAHE(2.0, cv::Size(8, 8));
     }
 
-    void Rectify(const cv::Mat &l_raw, const cv::Mat &r_raw, cv::Mat &l_rect, cv::Mat &r_rect) {
+    void rectify(const cv::Mat &l_raw, const cv::Mat &r_raw, cv::Mat &l_rect, cv::Mat &r_rect) {
         if (map11_.empty() || l_raw.size() != current_img_size_) {
             current_img_size_ = l_raw.size();
             cv::initUndistortRectifyMap(K1_, D1_, R1_, P1_, current_img_size_, CV_16SC2, map11_, map12_);
@@ -100,7 +91,7 @@ public:
         cv::remap(r_raw, r_rect, map21_, map22_, cv::INTER_LINEAR);
     }
 
-    cv::Mat Compute(const cv::Mat &img_l_rect_in, const cv::Mat &img_r_rect_in) {
+    cv::Mat compute(const cv::Mat &img_l_rect_in, const cv::Mat &img_r_rect_in) {
         cv::Mat img_l_rect, img_r_rect;
         clahe_->apply(img_l_rect_in, img_l_rect);
         clahe_->apply(img_r_rect_in, img_r_rect);
@@ -122,7 +113,22 @@ public:
         return disp_float;
     }
 
-    cv::Mat GetDepthMap(const cv::Mat& disp_float) {
+    StereoSGBM& load(const std::string &filename = "../result/cam_stereo.yml"){
+        cv::FileStorage fs(filename, cv::FileStorage::READ);
+        if (!fs.isOpened()) throw std::runtime_error("Cannot open: " + filename);
+
+        fs["K1"] >> K1_; fs["D1"] >> D1_;
+        fs["K2"] >> K2_; fs["D2"] >> D2_;
+        fs["R"]  >> R_;  fs["T"]  >> T_;
+        fs["R1"] >> R1_; fs["R2"] >> R2_;
+        fs["P1"] >> P1_; fs["P2"] >> P2_;
+        fs["Q"]  >> Q_;  fs["E"]  >> E_;
+        fs["F"]  >> F_;
+        fs.release();
+        return *this;
+    }
+
+    cv::Mat getDepthMap(const cv::Mat& disp_float) {
         if (disp_float.empty()) return cv::Mat();
         cv::Mat image_3d, depth_map, channels[3];
         cv::reprojectImageTo3D(disp_float, image_3d, Q_);
@@ -132,7 +138,7 @@ public:
         return depth_map;
     }
 
-    cv::Mat GetMatrixLeft(){
+    cv::Mat getMatrixLeft(){
         return K1_;
     }
 

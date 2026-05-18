@@ -25,7 +25,7 @@ class ROIManager{
         cv::Size max_size_, min_size_;
         bool initialized_constraint_;
 
-        void ApplyConstraintSize_(){
+        void applyConstraintSize_(){
             params_.width = std::clamp(params_.width, min_size_.width, max_size_.width);
             params_.height = std::clamp(params_.height, min_size_.height, max_size_.height);
 
@@ -47,18 +47,18 @@ class ROIManager{
             params_.height += dheight;
         }
 
-        cv::Rect GetRect() {
-            ApplyConstraintSize_();
+        cv::Rect getRect() {
+            applyConstraintSize_();
             return cv::Rect(params_.x - params_.width/2, params_.y - params_.height/2, params_.width, params_.height);
         }
 
-        void SetConstraint(cv::Size min_size, cv::Size max_size){
+        void setConstraint(cv::Size min_size, cv::Size max_size){
             max_size_=max_size;
             min_size_=min_size;
             initialized_constraint_=true;
         }
 
-        bool CheckInitConstraint(){
+        bool checkInitConstraint(){
             return initialized_constraint_;
         }
 

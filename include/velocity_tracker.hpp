@@ -43,6 +43,7 @@ private:
     float fx_, fy_, cx_, cy_;
     double smoothed_velocity_, vel_ms_;
 
+private:
     float getSubpixelDepth_(const cv::Mat& depth, cv::Point2f pt) const {
         int x = static_cast<int>(pt.x);
         int y = static_cast<int>(pt.y);
@@ -67,7 +68,7 @@ public:
     VelocityTracker()
      : fx_(0), fy_(0), cx_(0), cy_(0), smoothed_velocity_(0.), vel_ms_(0.) {}
 
-    void InitMatrixCam(const cv::Mat& K) {
+    void initMatrixCam(const cv::Mat& K) {
         K_ = K.clone();
         fx_ = static_cast<float>(K_.at<double>(0, 0));
         fy_ = static_cast<float>(K_.at<double>(1, 1));
@@ -75,7 +76,7 @@ public:
         cy_ = static_cast<float>(K_.at<double>(1, 2));
     }
 
-    double CalcVelocity(const cv::Mat& prev_img, const cv::Mat& cur_img, 
+    double calcVelocity(const cv::Mat& prev_img, const cv::Mat& cur_img, 
                         const cv::Mat& prev_depth,
                         const cv::Mat& mask = cv::Mat(),
                         bool to_kmh=true) 
@@ -151,12 +152,12 @@ public:
         return to_kmh ? vel_ms_*3.6 : vel_ms_;
     }
 
-    double GetSmoothed(bool to_kmh=true){
+    double getSmoothed(bool to_kmh=true){
         smoothed_velocity_ = params_.smoothed_alpha * vel_ms_ + (1.0 - params_.smoothed_alpha) * smoothed_velocity_;
         return to_kmh ? smoothed_velocity_*3.6 : smoothed_velocity_;
     }
 
-    void Start(){
+    void start(){
         prev_time_=std::chrono::steady_clock::now();
         return ;
     }

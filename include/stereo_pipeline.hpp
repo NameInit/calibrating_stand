@@ -29,6 +29,9 @@ private:
     ROIManager roi_manager_;
     Vizualizer vizualizer_;
     
+    //path
+    std::string calib_file_path_;
+
     //image flow
     cv::Mat prev_left_, prev_right_, cur_left_, cur_right_, visual_;
     cv::Mat prev_depth_map_, cur_depth_map_;
@@ -61,14 +64,15 @@ public:
           fps_counter_(),
           velocity_tracker_(),
           roi_manager_(),
-          vizualizer_()
+          vizualizer_(),
+          calib_file_path_(calib_file_path)
     {
-        stereoSGBM_.Create();
+        stereoSGBM_.create();
 
-        velocity_tracker_.InitMatrixCam(stereoSGBM_.GetMatrixLeft());
-        velocity_tracker_.Start(); //старт таймера внутри для подсчёта dt
+        velocity_tracker_.initMatrixCam(stereoSGBM_.getMatrixLeft());
+        velocity_tracker_.start(); //старт таймера внутри для подсчёта dt
 
-        roi_manager_.SetConstraint({1,1}, camera_.getSizeImage());
+        roi_manager_.setConstraint({1,1}, camera_.getSizeImage());
     }
 
     ~StereoPipeline(){
@@ -76,7 +80,37 @@ public:
         stopVelocityLoop_();
     }
 
-    StereoPipeline& build(const std::string& calib_file_path){
+    StereoPipeline& refresh(const std::string& calib_file_path){
+        stopSGBMLoop_();
+        stopVelocityLoop_();
+
+        ParamsManager::getInstance().refresh();
+        stereoSGBM_.load(calib_file_path);
+        stereoSGBM_.create();
+        
+        velocity_tracker_.initMatrixCam(stereoSGBM_.getMatrixLeft());
+        velocity_tracker_.start();
+
+        {
+            std::lock_guard<std::mutex> lock1(sgbm_mutex_in_);
+            std::lock_guard<std::mutex> lock2(sgbm_mutex_out_);
+            sgbm_shared_left_.release();
+            sgbm_shared_right_.release();
+            sgbm_shared_disp_map_.release();
+            sgbm_shared_depth_map_.release();
+        }
+        {
+            std::lock_guard<std::mutex> lock3(vel_mutex_in_);
+            vel_shared_prev_left_.release();
+            vel_shared_cur_left_.release();
+            vel_shared_prev_depth_map_.release();
+        }
+
+        sgbm_is_runnig_ = true;
+        sgbm_thread_ = std::thread(&StereoPipeline::runSGBMLoop_, this);
+
+        vel_is_running_ = true;
+        vel_thread_ = std::thread(&StereoPipeline::runVelocityLoop_, this);
         return *this;
     }
 
@@ -131,7 +165,7 @@ private:
             return false;
         }
 
-        stereoSGBM_.Rectify(cur_left_, cur_right_, cur_left_, cur_right_);
+        stereoSGBM_.rectify(cur_left_, cur_right_, cur_left_, cur_right_);
 
         //send frames for calc stereo
         {
@@ -151,7 +185,7 @@ private:
         }
 
         //roi and distance to center roi
-        cv::Rect roi = roi_manager_.GetRect();
+        cv::Rect roi = roi_manager_.getRect();
         cv::Mat depth_roi = cur_depth_map_(roi);
         float dist = depth_roi.at<float>(depth_roi.rows / 2, depth_roi.cols / 2);
 
@@ -180,6 +214,7 @@ private:
         else if (key == 'v' || key == 'V') roi_manager_.resizeROI(30, 0);
         else if (key == 'z' || key == 'Z') roi_manager_.resizeROI(0, -30);
         else if (key == 'x' || key == 'X') roi_manager_.resizeROI(0, 30);
+        else if (key == 'r' || key == 'R') { refresh(calib_file_path_); }
 
         return key == 'q' || key == 27; // 'q' or 'ESC'
     }
@@ -205,8 +240,8 @@ private:
             }
 
             cv::Mat local_disp_map, local_depth_map;
-            local_disp_map = stereoSGBM_.Compute(local_left, local_right);
-            local_depth_map = stereoSGBM_.GetDepthMap(local_disp_map);
+            local_disp_map = stereoSGBM_.compute(local_left, local_right);
+            local_depth_map = stereoSGBM_.getDepthMap(local_disp_map);
 
             {
                 std::lock_guard<std::mutex> lock(sgbm_mutex_out_);
@@ -246,8 +281,8 @@ private:
                 continue;
             }
 
-            velocity_tracker_.CalcVelocity(local_prev_left, local_cur_left, local_prev_depth_map);
-            vel_kmh_ = velocity_tracker_.GetSmoothed();
+            velocity_tracker_.calcVelocity(local_prev_left, local_cur_left, local_prev_depth_map);
+            vel_kmh_ = velocity_tracker_.getSmoothed();
         }
         return ;
     }
