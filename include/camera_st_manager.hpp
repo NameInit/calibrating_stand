@@ -48,7 +48,7 @@ class CameraSTManager{
             return cap_.isOpened();
         }
 
-        bool Read(){
+        bool Read(bool is_one_channel = true){
             if(!cap_.isOpened()){
                 return false;
             }
@@ -56,7 +56,9 @@ class CameraSTManager{
             try{
                 cv::Mat frame;
                 cap_.read(frame);
-                cv::cvtColor(frame,frame,cv::COLOR_RGB2GRAY);
+                if(is_one_channel){
+                    cv::cvtColor(frame,frame,cv::COLOR_RGB2GRAY);
+                }
                 frame_left_ = frame(cv::Rect(0,0,real_size_im_.width,real_size_im_.height));
                 frame_right_ = frame(cv::Rect(real_size_im_.width,0,real_size_im_.width,real_size_im_.height));
                 return true;

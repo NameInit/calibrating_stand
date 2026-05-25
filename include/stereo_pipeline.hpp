@@ -18,12 +18,14 @@
 #include "velocity_tracker.hpp"
 #include "roi_manager.hpp"
 #include "vizualizer.hpp"
+#include "stereo_optimized.hpp"
+#include "stereo_sgbm_optimazed.hpp"
 
 
 class StereoPipeline {
 private:
     CameraSTManager camera_;
-    StereoSGBM stereoSGBM_;
+    StereoSGBMOptimized stereoSGBM_;
     FPSCounter fps_counter_;
     VelocityTracker velocity_tracker_;
     ROIManager roi_manager_;
