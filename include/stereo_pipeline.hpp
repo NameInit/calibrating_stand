@@ -157,7 +157,7 @@ private:
         cur_left_ = camera_.GetLeftFrame();
         cur_right_ = camera_.GetRightFrame();
 
-        checkerChannenls(cur_left_, cur_right_);
+        checkerChannenls_(cur_left_, cur_right_);
 
         stereoSGBM_.rectify(cur_left_, cur_right_, cur_left_, cur_right_);
 
@@ -199,7 +199,7 @@ private:
         return true;
     }
 
-    bool checkerChannenls(cv::Mat& left, cv::Mat& right){
+    bool checkerChannenls_(cv::Mat& left, cv::Mat& right){
         if(cur_left_.channels()==3){
             cv::cvtColor(cur_left_,cur_left_,cv::COLOR_RGB2GRAY);
         }
