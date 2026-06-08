@@ -157,15 +157,7 @@ private:
         cur_left_ = camera_.GetLeftFrame();
         cur_right_ = camera_.GetRightFrame();
 
-        if(cur_left_.empty() || cur_right_.empty()) {
-            std::cerr << "Empty frame" << std::endl;
-            return false;
-        }
-
-        if(cur_left_.channels()>1 || cur_right_.channels()>1){
-            std::cerr << "Error len channels in frame";
-            return false;
-        }
+        checkerChannenls(cur_left_, cur_right_);
 
         stereoSGBM_.rectify(cur_left_, cur_right_, cur_left_, cur_right_);
 
@@ -204,6 +196,27 @@ private:
         prev_left_ = cur_left_.clone();
         prev_right_ = cur_right_.clone();
         prev_depth_map_ = cur_depth_map_.clone();
+        return true;
+    }
+
+    bool checkerChannenls(cv::Mat& left, cv::Mat& right){
+        if(cur_left_.channels()==3){
+            cv::cvtColor(cur_left_,cur_left_,cv::COLOR_RGB2GRAY);
+        }
+
+        if(cur_right_.channels()==3){
+            cv::cvtColor(cur_right_,cur_right_,cv::COLOR_RGB2GRAY);
+        }
+
+        if(cur_left_.empty() || cur_right_.empty()) {
+            std::cerr << "Empty frame" << std::endl;
+            return false;
+        }
+
+        if(cur_left_.channels()>1 || cur_right_.channels()>1){
+            std::cerr << "Error len channels in frame";
+            return false;
+        }
         return true;
     }
 

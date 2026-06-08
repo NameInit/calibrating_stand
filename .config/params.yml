@@ -14,7 +14,7 @@ path:
   num_test_img: 1
 
 camera:
-  video_id: 0
+  video_id: 2
   size_im: [1280, 800]
   api_preference: 200 #cv::CAP_V4L2
   use_mjpg: true
