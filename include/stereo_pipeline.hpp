@@ -74,20 +74,7 @@ public:
           vizualizer_(),
           calib_file_path_(calib_file_path)
     {
-        if(ParamsManager::getInstance()["stereo_sgbm"]["name_algorithm"].get<std::string>()=="StereoBMOptimized"){
-            stereo_matcher_ = std::make_unique<StereoBMOptimized>(calib_file_path);
-        }
-        else if(ParamsManager::getInstance()["stereo_sgbm"]["name_algorithm"].get<std::string>()=="StereoSGBMOptimized"){
-            stereo_matcher_ = std::make_unique<StereoSGBMOptimized>(calib_file_path);
-        }
-        else if(ParamsManager::getInstance()["stereo_sgbm"]["name_algorithm"].get<std::string>()=="StereoSGBM"){
-            stereo_matcher_ = std::make_unique<StereoSGBM>(calib_file_path);
-        }
-
-        stereo_matcher_->create();
-
-        velocity_tracker_.initMatrixCam(stereo_matcher_->getMatrixLeft());
-        velocity_tracker_.start(); 
+        initMatcher_(calib_file_path);
 
         roi_manager_.setConstraint({1,1}, camera_.getSizeImage());
     }
@@ -102,12 +89,9 @@ public:
         stopVelocityLoop_();
 
         ParamsManager::getInstance().refresh();
-        
-        stereo_matcher_->load(calib_file_path);
-        stereo_matcher_->create();
-        
-        velocity_tracker_.initMatrixCam(stereo_matcher_->getMatrixLeft());
-        velocity_tracker_.start();
+        calib_file_path_ = calib_file_path;
+
+        initMatcher_(calib_file_path);
 
         {
             std::lock_guard<std::mutex> lock1(sgbm_mutex_in_);
@@ -162,6 +146,30 @@ public:
     }
 
 private:
+    void initMatcher_(const std::string& path) {
+        stereo_matcher_.reset();
+
+        selectAlgorithmMathing_(path);
+
+        stereo_matcher_->create();
+
+        velocity_tracker_.initMatrixCam(stereo_matcher_->getMatrixLeft());
+        velocity_tracker_.start(); 
+    }
+
+    void selectAlgorithmMathing_(const std::string& path){
+        std::string name = ParamsManager::getInstance()["stereo_sgbm"]["name_algorithm"].get<std::string>();
+        if (name == "StereoBMOptimized") {
+            stereo_matcher_ = std::make_unique<StereoBMOptimized>(path);
+        }
+        else if (name == "StereoSGBMOptimized") {
+            stereo_matcher_ = std::make_unique<StereoSGBMOptimized>(path);
+        }
+        else if (name == "StereoSGBM") {
+            stereo_matcher_ = std::make_unique<StereoSGBM>(path);
+        }
+    }
+
     bool processFrame_() {
         if (!camera_.IsOpened()) return false;
         if (!camera_.Read()) return false;
