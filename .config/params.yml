@@ -45,6 +45,7 @@ stereo_sgbm:
   wls_lambda: 80000
   wls_sigma: 1.5
   median_blur_size: 0
+  name_algorithm: "StereoSGBMOptimized" #StereoBMOptimized/StereoSGBMOptimized/StereoSGBM
 
 velocity_tracker:
   max_corners: 400

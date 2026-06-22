@@ -5,42 +5,11 @@
 #include <string>
 #include <iostream>
 
-#include "params_manager.hpp"
+#include "stereo_params.hpp"
+#include "istereo_matcher.hpp"
 
-struct StereoSGBMParamsCreate{
-    int &min_disp;
-    int &max_disp;
-    int &block_size;
-    int &uniqueness_ratio;
-    int &speckle_ws;
-    int &speckle_range;
-    bool &use_wls;
-    int &wls_lambda;
-    double &wls_sigma;
-    int &median_blur_size;
 
-    StereoSGBMParamsCreate() :
-        min_disp(ParamsManager::getInstance()["stereo_sgbm"]["min_disp"]),
-        max_disp(ParamsManager::getInstance()["stereo_sgbm"]["max_disp"]),
-        block_size(ParamsManager::getInstance()["stereo_sgbm"]["block_size"]),
-        uniqueness_ratio(ParamsManager::getInstance()["stereo_sgbm"]["uniqueness_ratio"]),
-        speckle_ws(ParamsManager::getInstance()["stereo_sgbm"]["speckle_ws"]),
-        speckle_range(ParamsManager::getInstance()["stereo_sgbm"]["speckle_range"]),
-        use_wls(ParamsManager::getInstance()["stereo_sgbm"]["use_wls"]),
-        wls_lambda(ParamsManager::getInstance()["stereo_sgbm"]["wls_lambda"]),
-        wls_sigma(ParamsManager::getInstance()["stereo_sgbm"]["wls_sigma"]),
-        median_blur_size(ParamsManager::getInstance()["stereo_sgbm"]["median_blur_size"]) {}
-
-    int getP1() const {
-        return 8 * 3 * block_size*block_size;
-    }
-
-    int getP2() const {
-        return 32 * 3 * block_size*block_size;
-    }
-};
-
-class StereoSGBM {
+class StereoSGBM : public IStereoMatcher {
 private:
     cv::Mat K1_, D1_, K2_, D2_, R_, R1_, R2_, P1_, P2_, Q_, E_, F_;
     cv::Vec3d T_; 
@@ -51,7 +20,7 @@ private:
     cv::Ptr<cv::ximgproc::DisparityWLSFilter> wls_filter_;
     cv::Ptr<cv::CLAHE> clahe_;
     
-    StereoSGBMParamsCreate params_;
+    StereoParams params_;
 
     cv::Size current_img_size_ = cv::Size(0, 0);
 
@@ -61,11 +30,13 @@ public:
         load(filename);
     }
 
-    const cv::Mat& getK1() const { return K1_; }
-    const cv::Mat& getD1() const { return D1_; }
-    const cv::Mat& getQ()  const { return Q_; }
+    ~StereoSGBM() override = default;
 
-    void create() {
+    const cv::Mat& getK1() const override { return K1_; }
+    const cv::Mat& getD1() const override { return D1_; }
+    const cv::Mat& getQ()  const override { return Q_; }
+
+    void create() override {
         stereo_bm_left_ = cv::StereoSGBM::create(params_.min_disp, params_.max_disp, params_.block_size, params_.getP1(), params_.getP2(), 
                                                 2, 63, params_.uniqueness_ratio, params_.speckle_ws, 
                                                 params_.speckle_range, cv::StereoSGBM::MODE_SGBM_3WAY);
@@ -80,7 +51,7 @@ public:
         clahe_ = cv::createCLAHE(2.0, cv::Size(8, 8));
     }
 
-    void rectify(const cv::Mat &l_raw, const cv::Mat &r_raw, cv::Mat &l_rect, cv::Mat &r_rect) {
+    void rectify(const cv::Mat &l_raw, const cv::Mat &r_raw, cv::Mat &l_rect, cv::Mat &r_rect) override {
         if (map11_.empty() || l_raw.size() != current_img_size_) {
             current_img_size_ = l_raw.size();
             cv::initUndistortRectifyMap(K1_, D1_, R1_, P1_, current_img_size_, CV_16SC2, map11_, map12_);
@@ -91,7 +62,7 @@ public:
         cv::remap(r_raw, r_rect, map21_, map22_, cv::INTER_LINEAR);
     }
 
-    cv::Mat compute(const cv::Mat &img_l_rect_in, const cv::Mat &img_r_rect_in) {
+    cv::Mat compute(const cv::Mat &img_l_rect_in, const cv::Mat &img_r_rect_in) override {
         cv::Mat img_l_rect, img_r_rect;
         clahe_->apply(img_l_rect_in, img_l_rect);
         clahe_->apply(img_r_rect_in, img_r_rect);
@@ -113,7 +84,7 @@ public:
         return disp_float;
     }
 
-    StereoSGBM& load(const std::string &filename = "../result/cam_stereo.yml"){
+    IStereoMatcher& load(const std::string &filename = "../result/cam_stereo.yml") override {
         cv::FileStorage fs(filename, cv::FileStorage::READ);
         if (!fs.isOpened()) throw std::runtime_error("Cannot open: " + filename);
 
@@ -128,7 +99,7 @@ public:
         return *this;
     }
 
-    cv::Mat getDepthMap(const cv::Mat& disp_float) {
+    cv::Mat getDepthMap(const cv::Mat& disp_float) override {
         if (disp_float.empty()) return cv::Mat();
         cv::Mat image_3d, depth_map, channels[3];
         cv::reprojectImageTo3D(disp_float, image_3d, Q_);
@@ -138,11 +109,11 @@ public:
         return depth_map;
     }
 
-    cv::Mat getMatrixLeft(){
+    cv::Mat getMatrixLeft() override {
         return K1_;
     }
 
-    StereoSGBMParamsCreate& getParams(){
+    StereoParams& getParams() override {
         return params_;
     }
 };
